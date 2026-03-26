@@ -2343,10 +2343,20 @@ async function subirArchivoContrato() {
     statusEl.textContent = 'Subiendo archivo...';
 
     try {
-        const resultado = await apiSubirArchivoTemporal(archivo);
-        state.archivoTemporalContrato = resultado.archivo;
-        statusEl.innerHTML = `Archivo subido: <a href="${window.location.origin}/uploads/${resultado.archivo}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">${resultado.archivo}</a>`;
-        mostrarToast('Archivo subido correctamente');
+        const resultadoTemp = await apiSubirArchivoTemporal(archivo);
+        state.archivoTemporalContrato = resultadoTemp.archivo;
+
+        // Si estamos editando un contrato existente, asociar el archivo de inmediato
+        const contratoId = document.getElementById('contrato-id').value;
+        if (contratoId) {
+            await apiAsociarArchivoContrato(contratoId, resultadoTemp.archivo);
+            state.archivoTemporalContrato = null; // ya fue asociado, limpiar estado
+            statusEl.innerHTML = `Archivo actualizado: <a href="${window.location.origin}/uploads/${resultadoTemp.archivo}" target="_blank" class="text-blue-600 hover:text-blue-800 underline">${archivo.name}</a>`;
+            mostrarToast('Archivo actualizado correctamente');
+        } else {
+            statusEl.innerHTML = `Archivo listo: <span class="text-gray-700">${archivo.name}</span>`;
+            mostrarToast('Archivo listo para guardar');
+        }
     } catch (error) {
         statusEl.innerHTML = '<span class="text-red-600">Error al subir archivo</span>';
         mostrarToast('Error: ' + error.message, 'error');
