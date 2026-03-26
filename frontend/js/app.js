@@ -2283,6 +2283,10 @@ async function guardarContrato(event) {
         if (contratoId) {
             resultado = await apiActualizarContrato(contratoId, contrato);
 
+            if (state.archivoTemporalContrato) {
+                await apiAsociarArchivoContrato(contratoId, state.archivoTemporalContrato);
+            }
+
             if (state.adjuntosTemporalesContrato.length > 0) {
                 await subirAdjuntosTemporalesContrato(contratoId);
             }

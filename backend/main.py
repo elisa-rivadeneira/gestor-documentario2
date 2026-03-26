@@ -907,6 +907,12 @@ async def asociar_archivo_contrato(
     nuevo_nombre = f"contrato_{contrato_id}_{timestamp}_{nombre_original}"
     ruta_nueva = os.path.join(UPLOAD_DIR, nuevo_nombre)
 
+    # Eliminar archivo anterior si existe
+    if contrato.archivo_local:
+        ruta_anterior = os.path.join(UPLOAD_DIR, contrato.archivo_local)
+        if os.path.exists(ruta_anterior):
+            os.remove(ruta_anterior)
+
     os.rename(ruta_temporal, ruta_nueva)
 
     contrato.archivo_local = nuevo_nombre
