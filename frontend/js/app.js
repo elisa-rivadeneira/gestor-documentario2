@@ -162,6 +162,9 @@ function filtrarPorCategoria(categoria) {
     // Ocultar filtros de tipo de contrato por defecto
     filtrosTipoContrato.classList.add('hidden');
 
+    // Restaurar título por defecto (se cambia solo para contratos)
+    document.getElementById('titulo-bandeja').textContent = 'Bandeja de Correspondencia';
+
     switch (categoria) {
         case 'cartas-nemaec':
             // Cartas enviadas (NEMAEC)
@@ -198,6 +201,8 @@ function filtrarPorCategoria(categoria) {
             filtroReferencia.classList.add('hidden');
             colReferencia.classList.add('hidden');
             colDocumento.textContent = 'CONTRATO';
+            // Cambiar título de la bandeja
+            document.getElementById('titulo-bandeja').textContent = 'Contratos';
             // Mostrar filtros de tipo de contrato
             document.getElementById('filtros-tipo-contrato').classList.remove('hidden');
             actualizarBotonesMenu(categoria);
@@ -1216,7 +1221,7 @@ async function analizarConIA() {
         const resultado = await apiAnalizarArchivo(state.archivoTemporal);
 
         if (resultado.exito) {
-            console.log('Resultado IA:', resultado); // Para depuración
+            console.log('Resultado IAO:', resultado); // Para depuración
 
             // Llenar TODOS los campos con resultados
             document.getElementById('doc-numero').value = resultado.numero_oficio || '';
@@ -1641,7 +1646,8 @@ function renderizarContratos(data) {
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CONTRATADO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F. INICIO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F. FIN</th>
-        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">MONTO</th>
+        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[130px]">MONTO</th>
+        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ADENDA</th>
         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ESTADO</th>
         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16"></th>
     `;
@@ -1719,7 +1725,12 @@ function renderizarContratos(data) {
             <td class="px-4 py-3 text-sm text-gray-900 cursor-pointer" onclick="verDetalleContrato(${contrato.id})">${contrato.contratado || '-'}</td>
             <td class="px-4 py-3 text-sm text-gray-600 cursor-pointer" onclick="verDetalleContrato(${contrato.id})">${fechaInicioStr}</td>
             <td class="px-4 py-3 text-sm text-yellow-700 font-semibold cursor-pointer" onclick="verDetalleContrato(${contrato.id})">${fechaFinStr}</td>
-            <td class="px-4 py-3 text-sm text-green-700 font-medium text-right cursor-pointer" onclick="verDetalleContrato(${contrato.id})">${formatearMonto(contrato.monto_total)}</td>
+            <td class="px-4 py-3 text-sm text-green-700 font-medium text-right whitespace-nowrap min-w-[130px] cursor-pointer" onclick="verDetalleContrato(${contrato.id})">${formatearMonto(contrato.monto_total)}</td>
+            <td class="px-4 py-3 text-center cursor-pointer" onclick="verDetalleContrato(${contrato.id})">
+                ${(contrato.dias_adicionales || 0) > 0
+                    ? '<span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">SÍ</span>'
+                    : '<span class="text-gray-300 text-xs">—</span>'}
+            </td>
             <td class="px-4 py-2 text-center">
                 ${esAdmin ? `
                 <select onchange="cambiarEstadoContrato(${contrato.id}, this.value); event.stopPropagation();"
@@ -1749,8 +1760,8 @@ function renderizarContratos(data) {
     container.innerHTML += `
         <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
             <td colspan="8" class="px-4 py-3 text-sm text-right text-gray-700">TOTAL:</td>
-            <td class="px-4 py-3 text-sm text-green-700 text-right">${formatearMonto(totalMonto)}</td>
-            <td colspan="2"></td>
+            <td class="px-4 py-3 text-sm text-green-700 text-right whitespace-nowrap min-w-[130px]">${formatearMonto(totalMonto)}</td>
+            <td colspan="3"></td>
         </tr>
     `;
 
