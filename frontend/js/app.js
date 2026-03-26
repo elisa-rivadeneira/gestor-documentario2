@@ -2278,6 +2278,16 @@ async function guardarContrato(event) {
     }
 
     try {
+        // Auto-subir archivo si hay uno seleccionado en el input (sin necesidad de clicar "Subir")
+        const archivoInput = document.getElementById('contrato-archivo');
+        if (archivoInput.files[0]) {
+            const statusEl = document.getElementById('contrato-archivo-status');
+            statusEl.textContent = 'Subiendo archivo...';
+            const resultadoArchivo = await apiSubirArchivoTemporal(archivoInput.files[0]);
+            state.archivoTemporalContrato = resultadoArchivo.archivo;
+            statusEl.textContent = 'Archivo listo';
+        }
+
         let resultado;
 
         if (contratoId) {
