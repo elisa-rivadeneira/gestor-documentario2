@@ -20,7 +20,9 @@ let state = {
     archivoTemporalContrato: null,
     adjuntosTemporalesContrato: [],
     contratosOriginales: [], // Para filtros en frontend
-    contratosFiltrados: []   // Resultado de aplicar filtros
+    contratosFiltrados: [],  // Resultado de aplicar filtros
+    contratosSortColumn: null,
+    contratosSortDir: 'asc'
 };
 
 // ============================================
@@ -1630,6 +1632,45 @@ function descargarExcelContratos() {
     mostrarToast(`Descargados ${contratos.length} contratos`);
 }
 
+function sortIconContrato(col) {
+    if (state.contratosSortColumn !== col) return '<span class="text-gray-300 ml-1">↕</span>';
+    return state.contratosSortDir === 'asc'
+        ? '<span class="text-orange-500 ml-1">↑</span>'
+        : '<span class="text-orange-500 ml-1">↓</span>';
+}
+
+function sortContratos(columna) {
+    if (state.contratosSortColumn === columna) {
+        state.contratosSortDir = state.contratosSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.contratosSortColumn = columna;
+        state.contratosSortDir = 'asc';
+    }
+    const dir = state.contratosSortDir === 'asc' ? 1 : -1;
+
+    state.contratosFiltrados.sort((a, b) => {
+        if (columna === 'item_contratado') {
+            return dir * (a.item_contratado || '').localeCompare(b.item_contratado || '', 'es');
+        }
+        if (columna === 'adenda') {
+            const aVal = (a.dias_adicionales || 0) > 0 ? 1 : 0;
+            const bVal = (b.dias_adicionales || 0) > 0 ? 1 : 0;
+            return dir * (bVal - aVal); // asc = SÍ primero
+        }
+        if (columna === 'monto_total') {
+            return dir * ((a.monto_total || 0) - (b.monto_total || 0));
+        }
+        return 0;
+    });
+
+    renderizarContratos({
+        contratos: state.contratosFiltrados,
+        total: state.contratosFiltrados.length,
+        pagina: 1,
+        por_pagina: 100
+    });
+}
+
 function renderizarContratos(data) {
     const container = document.getElementById('lista-documentos');
     const totalEl = document.getElementById('total-docs');
@@ -1642,12 +1683,12 @@ function renderizarContratos(data) {
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NRO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CONTRATO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TIPO</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ITEM CONTRATADO</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onclick="sortContratos('item_contratado')">ITEM CONTRATADO ${sortIconContrato('item_contratado')}</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CONTRATADO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F. INICIO</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F. FIN</th>
-        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[130px]">MONTO</th>
-        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ADENDA</th>
+        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[130px] cursor-pointer select-none hover:text-gray-700" onclick="sortContratos('monto_total')">MONTO ${sortIconContrato('monto_total')}</th>
+        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onclick="sortContratos('adenda')">ADENDA ${sortIconContrato('adenda')}</th>
         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ESTADO</th>
         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16"></th>
     `;
