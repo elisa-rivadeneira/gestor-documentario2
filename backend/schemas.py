@@ -2,7 +2,7 @@
 Schemas Pydantic para validación de datos de entrada/salida
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
 
@@ -427,3 +427,44 @@ class ActualizarCeldaRequest(BaseModel):
     valor: Optional[str] = None        # SI / NO / NA / - / None
     observacion: Optional[str] = None
     enlace: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# KAIZEN — Registro de Mejora
+# ─────────────────────────────────────────────────────────────────────────────────
+
+class RegistroMejoraCreate(BaseModel):
+    proyecto_comisaria: Optional[str] = None
+    problema: Optional[str] = None
+    impacto_descripcion: Optional[str] = None
+    impacto_tipos: Optional[str] = None
+    porques: Optional[str] = None
+    solucion: Optional[str] = None
+    solucion_responsable: Optional[str] = None
+    solucion_momento: Optional[str] = None
+    aprendizaje: Optional[str] = None
+    clasificacion_tipo: Optional[str] = None
+    clasificacion_impacto: Optional[str] = None
+
+class RegistroMejoraUpdate(RegistroMejoraCreate):
+    estado: Optional[str] = None
+
+class RegistroMejoraResponse(RegistroMejoraCreate):
+    id: int
+    usuario: str
+    estado: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    class Config:
+        from_attributes = True
+
+class AsistirMejoraRequest(BaseModel):
+    bloque: str
+    accion: str
+    texto: str
+    contexto: Optional[str] = None
+    historial: Optional[List[Dict[str, str]]] = None  # conversación previa
+
+class AsistirMejoraResponse(BaseModel):
+    respuesta: str
+    tipo: str          # pregunta|sugerencia|reformulacion

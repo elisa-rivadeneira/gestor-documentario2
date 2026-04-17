@@ -7,7 +7,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="css/styles.css?v=11">
+    <link rel="stylesheet" href="css/styles.css?v=12">
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Header -->
@@ -95,6 +95,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         SEGUIMIENTO
+                    </button>
+                    <button id="btn-kaizen" onclick="mostrarKaizen()"
+                            class="admin-only hidden menu-btn menu-btn-kaizen flex-1 min-w-[150px] py-3 px-4 rounded-lg font-medium transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        KAIZEN
                     </button>
                 </div>
                 <!-- Acción rápida: Nueva Carta IA (solo en CARTAS NEMAEC, admin) -->
@@ -1737,6 +1744,310 @@
             </div>
         </div>
 
+        <!-- ══════════════════════════════════════════════════
+             Vista: Registro de Mejora – NEMAEC (Kaizen)
+        ══════════════════════════════════════════════════ -->
+        <div id="vista-kaizen" class="vista hidden">
+            <div id="kz-form-wrap">
+                <!-- Cabecera del módulo -->
+                <div class="kz-header">
+                    <div class="kz-header-top">
+                        <div>
+                            <h2 class="kz-titulo">Registro de Mejora – NEMAEC</h2>
+                            <p class="kz-subtitulo">Metodología Kaizen · Aprendizaje continuo</p>
+                        </div>
+                        <div class="kz-header-meta">
+                            <span id="kz-guardado-ind" class="kz-guardado hidden">✓ Guardado</span>
+                            <span class="kz-meta-fecha" id="kz-fecha"></span>
+                            <span class="kz-meta-user" id="kz-usuario"></span>
+                        </div>
+                    </div>
+                    <!-- Selector de comisaría -->
+                    <div class="kz-comisaria-wrap">
+                        <label class="kz-label">Puesto de trabajo</label>
+                        <select id="kz-comisaria" class="kz-select" onchange="kz.data.proyecto_comisaria=this.value;kzAutoGuardar()"></select>
+                    </div>
+                    <!-- Barra de progreso -->
+                    <div class="kz-progress-wrap">
+                        <div class="kz-steps">
+                            <div id="kz-step-0" class="kz-step-dot kz-step-active" title="Problema">①</div>
+                            <div id="kz-step-1" class="kz-step-dot" title="Impacto">②</div>
+                            <div id="kz-step-2" class="kz-step-dot" title="Causa Raíz">③</div>
+                            <div id="kz-step-3" class="kz-step-dot" title="Solución">④</div>
+                            <div id="kz-step-4" class="kz-step-dot" title="Aprendizaje">⑤</div>
+                            <div id="kz-step-5" class="kz-step-dot" title="Clasificación">⑥</div>
+                        </div>
+                        <div class="kz-progress-track">
+                            <div id="kz-progress-bar" class="kz-progress-fill" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 0: Problema ─────────────────────────── -->
+                <div class="kz-bloque kz-bloque-active" id="kz-bloque-0">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">①</span>
+                        <span class="kz-bloque-titulo">Descripción del Problema</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">Describe con claridad y objetividad el problema detectado. Evita suposiciones; céntrate en hechos observables.</p>
+                        <label class="kz-label">¿Qué problema se identificó?</label>
+                        <textarea id="kz-problema" rows="5" class="kz-textarea"
+                            placeholder="Ej: Describe qué ocurrió, cuándo y cómo afectó el trabajo."
+                            oninput="kz.data.problema=this.value;kzAutoGuardar()"></textarea>
+                        <p id="kz-error-problema" class="kz-error hidden">⚠ Describe el problema con al menos 5 palabras y 20 caracteres.</p>
+                        <div class="kz-ia-actions">
+                            <button class="kz-btn-ia" onclick="kzAsistir('problema','reformular',document.getElementById('kz-problema').value)">
+                                ✏️ Mejorar redacción
+                            </button>
+                            <button class="kz-btn-ia kz-btn-ia-sec" onclick="kzAsistir('problema','ayudar','')">
+                                💡 No sé cómo empezar
+                            </button>
+                        </div>
+                        <div class="kz-ia-panel hidden">
+                            <div class="kz-chat-msgs"></div>
+                            <div class="kz-chat-footer">
+                                <div class="kz-chat-input-row">
+                                    <input type="text" class="kz-chat-input" placeholder="Responde al asistente…"
+                                        onkeydown="if(event.key==='Enter')kzChatEnviar(this.closest('.kz-ia-panel'))">
+                                    <button class="kz-chat-send" onclick="kzChatEnviar(this.closest('.kz-ia-panel'))">Enviar</button>
+                                </div>
+                                <button class="kz-chat-usar hidden" onclick="kzUsarRespuesta(this.closest('.kz-ia-panel'))">✅ Usar esta respuesta en el formulario</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kz-nav">
+                        <span></span>
+                        <button class="kz-btn-siguiente" onclick="kzSiguiente()">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 1: Impacto ──────────────────────────── -->
+                <div class="kz-bloque kz-bloque-hidden" id="kz-bloque-1">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">②</span>
+                        <span class="kz-bloque-titulo">Impacto del Problema</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">Explica cómo afectó este problema al trabajo, al equipo o al beneficiario final. Sé específico.</p>
+                        <label class="kz-label">¿Cuál fue el impacto concreto?</label>
+                        <textarea id="kz-impacto" rows="4" class="kz-textarea"
+                            placeholder="Ej: Indica el impacto concreto: días de retraso, costo, proceso bloqueado."
+                            oninput="kz.data.impacto_descripcion=this.value;kzAutoGuardar()"></textarea>
+                        <p id="kz-error-impacto" class="kz-error hidden">⚠ Describe el impacto (mínimo 10 caracteres).</p>
+
+                        <label class="kz-label mt-4">Áreas afectadas (marca todas las que apliquen)</label>
+                        <div class="kz-checks-grid">
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="tiempo" onchange="kzAutoGuardar()"> Tiempo / plazo</label>
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="costo" onchange="kzAutoGuardar()"> Costo</label>
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="calidad" onchange="kzAutoGuardar()"> Calidad del entregable</label>
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="seguridad" onchange="kzAutoGuardar()"> Seguridad</label>
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="imagen" onchange="kzAutoGuardar()"> Imagen institucional</label>
+                            <label class="kz-check-label"><input type="checkbox" class="kz-impacto-check" value="beneficiario" onchange="kzAutoGuardar()"> Beneficiario final</label>
+                        </div>
+                        <div class="kz-ia-actions">
+                            <button class="kz-btn-ia" onclick="kzAsistir('impacto','reformular',document.getElementById('kz-impacto').value)">
+                                ✏️ Mejorar redacción
+                            </button>
+                            <button class="kz-btn-ia kz-btn-ia-sec" onclick="kzAsistir('impacto','ayudar','')">
+                                💡 No sé cómo empezar
+                            </button>
+                        </div>
+                        <div class="kz-ia-panel hidden">
+                            <div class="kz-chat-msgs"></div>
+                            <div class="kz-chat-footer">
+                                <div class="kz-chat-input-row">
+                                    <input type="text" class="kz-chat-input" placeholder="Responde al asistente…"
+                                        onkeydown="if(event.key==='Enter')kzChatEnviar(this.closest('.kz-ia-panel'))">
+                                    <button class="kz-chat-send" onclick="kzChatEnviar(this.closest('.kz-ia-panel'))">Enviar</button>
+                                </div>
+                                <button class="kz-chat-usar hidden" onclick="kzUsarRespuesta(this.closest('.kz-ia-panel'))">✅ Usar esta respuesta en el formulario</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kz-nav">
+                        <button class="kz-btn-anterior" onclick="kzAnterior()">← Anterior</button>
+                        <button class="kz-btn-siguiente" onclick="kzSiguiente()">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 2: 5 Porqués ────────────────────────── -->
+                <div class="kz-bloque kz-bloque-hidden" id="kz-bloque-2">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">③</span>
+                        <span class="kz-bloque-titulo">Causa Raíz — 5 Porqués</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">Pregúntate "¿por qué?" de forma encadenada hasta llegar a la causa raíz real. Puedes agregar hasta 5 niveles.</p>
+                        <div id="kz-porques-wrap"></div>
+                        <p id="kz-error-causa" class="kz-error hidden">⚠ Completa al menos el primer nivel de causa (mínimo 10 caracteres).</p>
+                        <div class="kz-ia-actions">
+                            <button class="kz-btn-ia" onclick="kzAsistir('causa','validar',kz.data.porques.filter(Boolean).join(' → '))">
+                                ✅ ¿Llegué a la causa raíz?
+                            </button>
+                            <button class="kz-btn-ia kz-btn-ia-sec" onclick="kzAsistir('causa','ayudar','')">
+                                💡 No sé cómo continuar
+                            </button>
+                        </div>
+                        <div class="kz-ia-panel hidden">
+                            <div class="kz-chat-msgs"></div>
+                            <div class="kz-chat-footer">
+                                <div class="kz-chat-input-row">
+                                    <input type="text" class="kz-chat-input" placeholder="Responde al asistente…"
+                                        onkeydown="if(event.key==='Enter')kzChatEnviar(this.closest('.kz-ia-panel'))">
+                                    <button class="kz-chat-send" onclick="kzChatEnviar(this.closest('.kz-ia-panel'))">Enviar</button>
+                                </div>
+                                <button class="kz-chat-usar hidden" onclick="kzUsarRespuesta(this.closest('.kz-ia-panel'))">✅ Usar esta respuesta en el formulario</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kz-nav">
+                        <button class="kz-btn-anterior" onclick="kzAnterior()">← Anterior</button>
+                        <button class="kz-btn-siguiente" onclick="kzSiguiente()">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 3: Solución ─────────────────────────── -->
+                <div class="kz-bloque kz-bloque-hidden" id="kz-bloque-3">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">④</span>
+                        <span class="kz-bloque-titulo">Solución Implementada</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">Describe qué acción concreta se tomó (o se tomará) para resolver la causa raíz. Sé específico y accionable.</p>
+                        <label class="kz-label">¿Qué solución se implementó o se implementará?</label>
+                        <textarea id="kz-solucion" rows="4" class="kz-textarea"
+                            placeholder="Ej: Describe la acción concreta tomada para resolver la causa raíz."
+                            oninput="kz.data.solucion=this.value;kzAutoGuardar()"></textarea>
+                        <p id="kz-error-solucion" class="kz-error hidden">⚠ Describe la solución (mínimo 10 caracteres).</p>
+
+                        <label class="kz-label mt-4">Responsable de ejecución</label>
+                        <input id="kz-responsable" type="text" class="kz-input"
+                            placeholder="Nombre o cargo del responsable"
+                            oninput="kz.data.solucion_responsable=this.value;kzAutoGuardar()">
+                        <p id="kz-error-responsable" class="kz-error hidden">⚠ Indica quién es el responsable.</p>
+
+                        <label class="kz-label mt-4">¿Cuándo se aplica?</label>
+                        <div class="kz-momento-group">
+                            <button class="kz-momento-btn" data-v="inmediato" onclick="kzSeleccionarMomento('inmediato')">⚡ Inmediato</button>
+                            <button class="kz-momento-btn" data-v="corto" onclick="kzSeleccionarMomento('corto')">📅 Corto plazo (&lt;1 mes)</button>
+                            <button class="kz-momento-btn" data-v="mediano" onclick="kzSeleccionarMomento('mediano')">🗓 Mediano plazo (1-3 meses)</button>
+                            <button class="kz-momento-btn" data-v="proceso" onclick="kzSeleccionarMomento('proceso')">⚙️ Cambio de proceso</button>
+                        </div>
+                        <p id="kz-error-momento" class="kz-error hidden">⚠ Selecciona cuándo se aplica la solución.</p>
+
+                        <div class="kz-ia-actions">
+                            <button class="kz-btn-ia" onclick="kzAsistir('solucion','reformular',document.getElementById('kz-solucion').value)">
+                                ✏️ Mejorar redacción
+                            </button>
+                            <button class="kz-btn-ia kz-btn-ia-sec" onclick="kzAsistir('solucion','ayudar','')">
+                                💡 No sé cómo redactarlo
+                            </button>
+                        </div>
+                        <div class="kz-ia-panel hidden">
+                            <div class="kz-chat-msgs"></div>
+                            <div class="kz-chat-footer">
+                                <div class="kz-chat-input-row">
+                                    <input type="text" class="kz-chat-input" placeholder="Responde al asistente…"
+                                        onkeydown="if(event.key==='Enter')kzChatEnviar(this.closest('.kz-ia-panel'))">
+                                    <button class="kz-chat-send" onclick="kzChatEnviar(this.closest('.kz-ia-panel'))">Enviar</button>
+                                </div>
+                                <button class="kz-chat-usar hidden" onclick="kzUsarRespuesta(this.closest('.kz-ia-panel'))">✅ Usar esta respuesta en el formulario</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kz-nav">
+                        <button class="kz-btn-anterior" onclick="kzAnterior()">← Anterior</button>
+                        <button class="kz-btn-siguiente" onclick="kzSiguiente()">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 4: Aprendizaje ──────────────────────── -->
+                <div class="kz-bloque kz-bloque-hidden" id="kz-bloque-4">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">⑤</span>
+                        <span class="kz-bloque-titulo">Aprendizaje Institucional</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">¿Qué aprendió el equipo de esta situación? ¿Qué se puede hacer diferente en el futuro para evitar que se repita?</p>
+                        <label class="kz-label">Lección aprendida</label>
+                        <textarea id="kz-aprendizaje" rows="5" class="kz-textarea"
+                            placeholder='Ej: Formula una regla: "Siempre verificar X antes de Y para evitar Z."'
+                            oninput="kz.data.aprendizaje=this.value;kzAutoGuardar()"></textarea>
+                        <p id="kz-error-aprendizaje" class="kz-error hidden">⚠ Describe el aprendizaje (mínimo 10 caracteres).</p>
+                        <div class="kz-ia-actions">
+                            <button class="kz-btn-ia" onclick="kzAsistir('aprendizaje','reformular',document.getElementById('kz-aprendizaje').value)">
+                                ✏️ Mejorar redacción
+                            </button>
+                            <button class="kz-btn-ia kz-btn-ia-sec" onclick="kzAsistir('aprendizaje','ayudar','')">
+                                💡 No sé cómo formularlo
+                            </button>
+                        </div>
+                        <div class="kz-ia-panel hidden">
+                            <div class="kz-chat-msgs"></div>
+                            <div class="kz-chat-footer">
+                                <div class="kz-chat-input-row">
+                                    <input type="text" class="kz-chat-input" placeholder="Responde al asistente…"
+                                        onkeydown="if(event.key==='Enter')kzChatEnviar(this.closest('.kz-ia-panel'))">
+                                    <button class="kz-chat-send" onclick="kzChatEnviar(this.closest('.kz-ia-panel'))">Enviar</button>
+                                </div>
+                                <button class="kz-chat-usar hidden" onclick="kzUsarRespuesta(this.closest('.kz-ia-panel'))">✅ Usar esta respuesta en el formulario</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kz-nav">
+                        <button class="kz-btn-anterior" onclick="kzAnterior()">← Anterior</button>
+                        <button class="kz-btn-siguiente" onclick="kzSiguiente()">Siguiente →</button>
+                    </div>
+                </div>
+
+                <!-- ── Bloque 5: Clasificación ────────────────────── -->
+                <div class="kz-bloque kz-bloque-hidden" id="kz-bloque-5">
+                    <div class="kz-bloque-header">
+                        <span class="kz-bloque-num">⑥</span>
+                        <span class="kz-bloque-titulo">Clasificación del Registro</span>
+                    </div>
+                    <div class="kz-bloque-body">
+                        <p class="kz-instruccion">Clasifica este registro para facilitar su consulta y análisis posterior.</p>
+
+                        <label class="kz-label">Tipo de mejora</label>
+                        <div class="kz-tipo-group">
+                            <button class="kz-tipo-btn" data-v="proceso" onclick="kzSeleccionarTipo('proceso')">⚙️ Proceso</button>
+                            <button class="kz-tipo-btn" data-v="comunicacion" onclick="kzSeleccionarTipo('comunicacion')">💬 Comunicación</button>
+                            <button class="kz-tipo-btn" data-v="documentacion" onclick="kzSeleccionarTipo('documentacion')">📄 Documentación</button>
+                            <button class="kz-tipo-btn" data-v="logistica" onclick="kzSeleccionarTipo('logistica')">🚛 Logística</button>
+                            <button class="kz-tipo-btn" data-v="supervision" onclick="kzSeleccionarTipo('supervision')">🔍 Supervisión</button>
+                            <button class="kz-tipo-btn" data-v="otro" onclick="kzSeleccionarTipo('otro')">➕ Otro</button>
+                        </div>
+                        <p id="kz-error-tipo" class="kz-error hidden">⚠ Selecciona el tipo de mejora.</p>
+
+                        <label class="kz-label mt-4">Nivel de impacto</label>
+                        <div class="kz-nivel-group">
+                            <button class="kz-nivel-impacto-btn kz-nivel-bajo" data-v="bajo" onclick="kzSeleccionarNivelImpacto('bajo')">🟢 Bajo</button>
+                            <button class="kz-nivel-impacto-btn kz-nivel-medio" data-v="medio" onclick="kzSeleccionarNivelImpacto('medio')">🟡 Medio</button>
+                            <button class="kz-nivel-impacto-btn kz-nivel-alto" data-v="alto" onclick="kzSeleccionarNivelImpacto('alto')">🔴 Alto</button>
+                        </div>
+                        <p id="kz-error-nivel" class="kz-error hidden">⚠ Selecciona el nivel de impacto.</p>
+                    </div>
+                    <div class="kz-nav kz-nav-final">
+                        <button class="kz-btn-anterior" onclick="kzAnterior()">← Anterior</button>
+                        <button class="kz-btn-enviar" id="kz-btn-enviar" onclick="kzEnviar()">
+                            ✅ Enviar registro
+                        </button>
+                    </div>
+                </div>
+            </div><!-- /kz-form-wrap -->
+
+            <!-- Pantalla de éxito -->
+            <div id="kz-exito" class="kz-exito hidden">
+                <div class="kz-exito-icon">🎉</div>
+                <h3 class="kz-exito-titulo">¡Registro enviado!</h3>
+                <p class="kz-exito-msg">Tu registro de mejora fue guardado correctamente. Gracias por contribuir al aprendizaje continuo de NEMAEC.</p>
+                <button class="kz-btn-siguiente" onclick="kzNuevoRegistro()">+ Nuevo registro</button>
+                <button class="kz-btn-anterior" onclick="mostrarBandeja()" style="margin-top:8px">Volver al inicio</button>
+            </div>
+        </div><!-- /vista-kaizen -->
+
     </main>
 
     <!-- Toast para notificaciones -->
@@ -1748,5 +2059,6 @@
 
     <script src="js/api.js?v=3"></script>
     <script src="js/app.js?v=13"></script>
+    <script src="js/kaizen.js?v=1"></script>
 </body>
 </html>

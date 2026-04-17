@@ -23,7 +23,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 from database import engine, get_db, Base
-from models import Documento, Adjunto, Usuario, Contrato, AdjuntoContrato, ComisariaContrato, ExpedienteContrato, PlantillaCarta, CartaGenerada, ConfiguracionSistema, SeguimientoComisaria, SeguimientoCeldaDetalle
+from models import Documento, Adjunto, Usuario, Contrato, AdjuntoContrato, ComisariaContrato, ExpedienteContrato, PlantillaCarta, CartaGenerada, ConfiguracionSistema, SeguimientoComisaria, SeguimientoCeldaDetalle, RegistroMejora
 from schemas import (
     DocumentoCreate, DocumentoUpdate, DocumentoResponse, DocumentoListResponse,
     AdjuntoCreate, AdjuntoResponse, AnalisisIARequest, AnalisisIAResponse,
@@ -33,7 +33,9 @@ from schemas import (
     ExpedienteContratoCreate, ExpedienteContratoUpdate, ExpedienteContratoResponse,
     PlantillaCartaCreate, PlantillaCartaResponse,
     GenerarCartaRequest, GenerarCartaResponse, ExportarCartaRequest,
-    SeguimientoComisariaResponse, ActualizarCeldaRequest
+    SeguimientoComisariaResponse, ActualizarCeldaRequest,
+    RegistroMejoraCreate, RegistroMejoraUpdate, RegistroMejoraResponse,
+    AsistirMejoraRequest, AsistirMejoraResponse
 )
 from services.ia_service import ia_service, extraer_numero_con_ocr, OCR_DISPONIBLE
 from services.auth_service import hash_password, verify_password, create_token, verify_token
@@ -2547,6 +2549,225 @@ FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronten
 if os.path.exists(FRONTEND_DIR):
     app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
     app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
+
+# ============================================
+# KAIZEN — REGISTRO DE MEJORA
+# ============================================
+
+_PROMPT_KAIZEN = """Eres un asistente de redacción para registros Kaizen de NEMAEC \
+(núcleo ejecutor FONCODES, mantenimiento y equipamiento de comisarías).
+
+Si el contexto incluye "Puesto del usuario:", usa vocabulario del rol:
+- MONITOR DE OBRA → obra, partidas, contratista, cuaderno de obra, valorizaciones.
+- ADMINISTRADOR / ASISTENTE ADMINISTRATIVO → expedientes, trámites, plazos, firmas.
+- COORDINADOR / ASISTENTE DE EQUIPAMIENTO → actas, recepción, inventario, proveedor.
+- COORDINADOR GENERAL / PRESIDENTE → UGPE, FONCODES, informes, coordinación.
+- TESORERO → pagos, transferencias, presupuesto, rendición.
+- ESPECIALISTA TIC → sistemas, servidores, acceso, datos, red.
+- SECRETARIO → correspondencia, archivo, oficios, plazos de respuesta.
+
+REGLAS DE COMPORTAMIENTO:
+1. TURNO 1 (sin historial previo): Si el texto es muy vago o vacío, haz UNA sola pregunta \
+   concreta. Si ya tiene contenido útil, ve directo a redactar.
+2. TURNO 2 en adelante (hay historial): NUNCA hagas otra pregunta. Con todo lo que el usuario \
+   te dijo, redacta la versión final y pregunta solo: \
+   "¿Estás de acuerdo con esta formulación? «[texto concreto y completo]»"
+3. Si el usuario confirma (dice sí, ok, bien, correcto, de acuerdo, perfecto): \
+   responde únicamente "¡Perfecto! Pulsa el botón amarillo para aplicarlo al formulario."
+4. Máximo 3 oraciones en total por respuesta.
+5. El texto entre «» debe ser autocontenido y listo para pegar en un formulario oficial.
+6. No repitas preguntas que ya hiciste en el historial."""
+
+_GUIAS_BLOQUE = {
+    "problema":    "El usuario describe un problema del proyecto. Ayúdalo a ser más específico sobre: qué ocurrió exactamente, cuándo, dónde y cuánto afectó.",
+    "impacto":     "El usuario describe el impacto. Ayúdalo a cuantificar: días de retraso, costo adicional, quién se vio afectado.",
+    "causa":       "El usuario responde a un '¿Por qué?'. Detecta si es una consecuencia (no una causa raíz) y empújalo a ir más profundo.",
+    "solucion":    "El usuario propone una solución. Ayúdalo a hacerla concreta: ¿qué acción específica, quién, cuándo exactamente?",
+    "aprendizaje": "El usuario escribe un aprendizaje. Ayúdalo a convertirlo en una regla o estándar aplicable: 'Siempre... antes de...'",
+}
+
+@app.get("/api/mejoras", response_model=List[RegistroMejoraResponse])
+def listar_mejoras(
+    estado: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    admin: dict = Depends(verificar_admin)
+):
+    q = db.query(RegistroMejora)
+    if estado:
+        q = q.filter(RegistroMejora.estado == estado)
+    return q.order_by(RegistroMejora.created_at.desc()).all()
+
+@app.post("/api/mejoras", response_model=RegistroMejoraResponse, status_code=201)
+def crear_mejora(
+    datos: RegistroMejoraCreate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(verificar_admin)
+):
+    registro = RegistroMejora(**datos.model_dump(), usuario=admin.get("nombre", admin.get("sub", "usuario")))
+    db.add(registro)
+    db.commit()
+    db.refresh(registro)
+    return registro
+
+@app.post("/api/mejoras/asistir", response_model=AsistirMejoraResponse)
+def asistir_mejora(
+    req: AsistirMejoraRequest,
+    admin: dict = Depends(verificar_admin)
+):
+    """Asistencia IA: SOLO hace preguntas y pide precisión. Nunca genera contenido."""
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    guia = _GUIAS_BLOQUE.get(req.bloque, "Ayuda al usuario a ser más específico.")
+    acciones = {
+        "mejorar":    "El usuario quiere mejorar la redacción. Señala qué parte es imprecisa y pregunta algo concreto.",
+        "especificar":"El usuario quiere ser más específico. Pregunta por detalles: qué, cuándo, cuánto, dónde.",
+        "ayudar":     "El usuario no sabe cómo continuar. Hazle 1-2 preguntas guía muy concretas.",
+        "convertir":  "El usuario quiere convertir su texto en algo accionable. Pregunta qué acción concreta implica.",
+        "preguntar":  "Formula la siguiente pregunta del proceso 5 Porqués basándote en lo que el usuario ya escribió.",
+        "validar":    "El usuario quiere saber si llegó a la causa raíz. Evalúa si la cadena de porqués es profunda o superficial.",
+        "reformular": "El usuario quiere reformular su texto. Señala qué parte mejorar y pregunta algo concreto.",
+    }
+    instruccion_accion = acciones.get(req.accion, "Ayuda al usuario a ser más preciso.")
+    contexto_extra = f"\nContexto adicional: {req.contexto}" if req.contexto else ""
+
+    prompt_usuario = f"""Bloque: {req.bloque}
+Instrucción: {guia}
+Acción solicitada: {instruccion_accion}{contexto_extra}
+
+Texto del usuario:
+\"\"\"{req.texto}\"\"\"
+
+Responde SOLO con JSON:
+{{"respuesta": "...", "tipo": "pregunta|sugerencia|reformulacion"}}"""
+
+    if not api_key:
+        puesto = ""
+        if req.contexto:
+            for linea in req.contexto.splitlines():
+                if linea.startswith("Puesto del usuario:"):
+                    puesto = linea.split(":", 1)[1].strip().upper()
+                    break
+
+        mocks_por_puesto = {
+            "MONITOR DE OBRA": {
+                "problema":    ("¿En qué partida o actividad ocurrió? Con ese dato puedo ayudarte a redactarlo. Si ya lo tienes escrito, puedes usar: «Durante la ejecución de [partida], se detectó que [describe el problema], lo que impidió continuar con el avance programado.»", "sugerencia"),
+                "impacto":     ("Puedes usar: «El problema generó un retraso de [X] días en el cronograma de ejecución, afectando la fecha de entrega prevista y obligando a levantar una anotación en el cuaderno de obra.»", "sugerencia"),
+                "causa":       ("Puedes usar: «El contratista no contaba con [material/recurso] al momento de iniciar la actividad porque no gestionó el abastecimiento con anticipación suficiente.»", "sugerencia"),
+                "solucion":    ("Puedes usar: «Se emitió una anotación en el cuaderno de obra exigiendo al contratista presentar un plan de recuperación en 48 horas, con responsable: [nombre/cargo].»", "sugerencia"),
+                "aprendizaje": ("Puedes usar: «Antes de iniciar cada frente de trabajo, el monitor debe verificar que el contratista cuenta con los materiales y recursos necesarios para al menos 5 días de avance.»", "sugerencia"),
+            },
+            "ADMINISTRADOR": {
+                "problema":    ("Puedes usar: «Se detectó que el expediente de [trámite] fue devuelto por [área/entidad] debido a [motivo], generando un retraso de [X] días en el proceso.»", "sugerencia"),
+                "impacto":     ("Puedes usar: «El retraso bloqueó el procesamiento del pago/trámite correspondiente y generó una observación formal que requirió corrección y reenvío del expediente.»", "sugerencia"),
+                "causa":       ("Puedes usar: «No existía un checklist de requisitos previo al envío del expediente, lo que permitió que se remitiera con documentos incompletos o sin firmas requeridas.»", "sugerencia"),
+                "solucion":    ("Puedes usar: «Se implementó un checklist de verificación obligatorio antes de remitir cualquier expediente, con revisión del [cargo responsable] previo al despacho.»", "sugerencia"),
+                "aprendizaje": ("Puedes usar: «Todo expediente debe pasar por una revisión de checklist antes de ser firmado y remitido, asegurando que todos los requisitos documentarios estén completos.»", "sugerencia"),
+            },
+            "ESPECIALISTA TIC": {
+                "problema":    ("Puedes usar: «El sistema [nombre] estuvo inaccesible durante [X] horas debido a [causa técnica], impidiendo que [N] usuarios realizaran sus operaciones habituales.»", "sugerencia"),
+                "impacto":     ("Puedes usar: «La interrupción bloqueó el registro de [tipo de operación] durante [X] horas, generando retrasos en los plazos de respuesta y afectando la operación del área.»", "sugerencia"),
+                "causa":       ("Puedes usar: «La intervención no contaba con un plan de rollback aprobado ni con una ventana de mantenimiento coordinada, lo que impidió revertir el cambio rápidamente.»", "sugerencia"),
+                "solucion":    ("Puedes usar: «Se estableció que toda intervención en servidores de producción debe realizarse en ventana de mantenimiento (viernes 6-8pm), con plan de rollback documentado y aprobado previamente.»", "sugerencia"),
+                "aprendizaje": ("Puedes usar: «Antes de aplicar cualquier cambio en producción, se debe tener un plan de rollback probado y una ventana de mantenimiento comunicada con al menos 48 horas de anticipación.»", "sugerencia"),
+            },
+            "COORDINADOR DE EQUIPAMIENTO": {
+                "problema":    ("Puedes usar: «Durante la recepción de [tipo de bien] en la comisaría [nombre], se detectó que [N] de [total] unidades presentaban [defecto], impidiendo su instalación inmediata.»", "sugerencia"),
+                "impacto":     ("Puedes usar: «La observación retrasó la entrega final en [X] días hábiles y requirió levantar un acta de observación formal al proveedor para gestionar el reemplazo.»", "sugerencia"),
+                "causa":       ("Puedes usar: «No se realizó una verificación física detallada al momento del desembalaje porque el protocolo de recepción no incluía ese paso como obligatorio.»", "sugerencia"),
+                "solucion":    ("Puedes usar: «Se coordinó el reemplazo con el proveedor en garantía y se actualizó el protocolo de recepción incluyendo verificación fotográfica obligatoria antes de firmar el acta.»", "sugerencia"),
+                "aprendizaje": ("Puedes usar: «Toda recepción de bienes debe incluir inspección visual ítem por ítem con registro fotográfico antes de firmar el acta de conformidad.»", "sugerencia"),
+            },
+        }
+        mocks_genericos = {
+            "problema":    ("Puedes usar: «Se identificó que [describe el problema] durante [momento/proceso], lo que afectó [área/actividad] por aproximadamente [duración o magnitud].»", "sugerencia"),
+            "impacto":     ("Puedes usar: «El problema generó un retraso de [X] días/horas en [proceso afectado], requiriendo [acción correctiva inmediata].»", "sugerencia"),
+            "causa":       ("Puedes usar: «La causa raíz fue la ausencia de [proceso/control/protocolo] que permitió que [situación problemática] ocurriera sin ser detectada a tiempo.»", "sugerencia"),
+            "solucion":    ("Puedes usar: «Se implementó [acción concreta] a cargo de [responsable], con efecto a partir de [momento], para evitar que el problema se repita.»", "sugerencia"),
+            "aprendizaje": ("Puedes usar: «Antes de [actividad crítica], siempre se debe verificar [control o condición] para evitar [consecuencia negativa].»", "sugerencia"),
+        }
+        mocks = mocks_por_puesto.get(puesto, mocks_genericos)
+        txt, tipo = mocks.get(req.bloque, ("¿Puedes ser más específico sobre lo que describes?", "pregunta"))
+        return AsistirMejoraResponse(respuesta=txt, tipo=tipo)
+
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
+    try:
+        # Detectar turno: si hay historial con mensajes del usuario, estamos en turno 2+
+        turno = 0
+        if req.historial:
+            turno = sum(1 for m in req.historial if m.get("role") == "user")
+
+        if turno >= 1:
+            prompt_usuario += "\n\n[INSTRUCCIÓN INTERNA: Es el turno 2+. NO hagas más preguntas. " \
+                "Sintetiza TODO lo conversado y produce la formulación final entre «».]"
+
+        messages = [
+            {"role": "system", "content": _PROMPT_KAIZEN},
+            {"role": "user",   "content": prompt_usuario},
+        ]
+        if req.historial:
+            messages.extend(req.historial)
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.3,
+            max_tokens=300,
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r'^```[a-z]*\n?', '', raw)
+            raw = re.sub(r'\n?```$', '', raw)
+        datos = json.loads(raw)
+        return AsistirMejoraResponse(
+            respuesta=datos.get("respuesta", ""),
+            tipo=datos.get("tipo", "pregunta")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error IA: {str(e)}")
+
+@app.put("/api/mejoras/{rid}", response_model=RegistroMejoraResponse)
+def actualizar_mejora(
+    rid: int,
+    datos: RegistroMejoraUpdate,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(verificar_admin)
+):
+    registro = db.query(RegistroMejora).filter(RegistroMejora.id == rid).first()
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    for k, v in datos.model_dump(exclude_unset=True).items():
+        setattr(registro, k, v)
+    registro.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(registro)
+    return registro
+
+@app.post("/api/mejoras/{rid}/enviar", response_model=RegistroMejoraResponse)
+def enviar_mejora(
+    rid: int,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(verificar_admin)
+):
+    registro = db.query(RegistroMejora).filter(RegistroMejora.id == rid).first()
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    registro.estado = "enviado"
+    registro.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(registro)
+    return registro
+
+@app.delete("/api/mejoras/{rid}", status_code=204)
+def eliminar_mejora(
+    rid: int,
+    db: Session = Depends(get_db),
+    admin: dict = Depends(verificar_admin)
+):
+    registro = db.query(RegistroMejora).filter(RegistroMejora.id == rid).first()
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    db.delete(registro)
+    db.commit()
 
 @app.get("/favicon.ico")
 async def serve_favicon():

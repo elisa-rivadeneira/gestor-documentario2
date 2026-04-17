@@ -680,3 +680,253 @@
     backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(253,230,138,0.6);
 }
+
+/* ================================================================
+   KAIZEN — Registro de Mejora NEMAEC
+   ================================================================ */
+
+/* Botón de menú Kaizen */
+.menu-btn-kaizen {
+    background: linear-gradient(135deg, #0A2E10 0%, #1a5c24 100%);
+    color: #F0D20F;
+    border: 2px solid #C8A200;
+}
+.menu-btn-kaizen:hover { background: linear-gradient(135deg, #1a5c24 0%, #236b2e 100%); }
+.menu-btn-kaizen.active { background: #0A2E10; box-shadow: 0 0 0 3px rgba(200,162,0,0.4); }
+
+/* Contenedor principal */
+#vista-kaizen { max-width: 760px; margin: 0 auto; padding: 0 0 40px; }
+
+/* Cabecera */
+.kz-header {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #d1e8d4;
+    border-top: 4px solid #0A2E10;
+    padding: 22px 24px 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.kz-header-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+.kz-titulo { font-size: 1.25rem; font-weight: 800; color: #0A2E10; }
+.kz-subtitulo { font-size: 0.75rem; color: #5AB496; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+.kz-header-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.kz-meta-fecha, .kz-meta-user { font-size: 0.72rem; color: #6b7280; }
+.kz-guardado { font-size: 0.72rem; color: #16a34a; font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 20px; border: 1px solid #bbf7d0; }
+.kz-comisaria-wrap { margin-bottom: 14px; }
+
+/* Progress */
+.kz-progress-wrap { display: flex; align-items: center; gap: 10px; }
+.kz-steps { display: flex; gap: 6px; }
+.kz-step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; cursor: default;
+    background: #e5e7eb; color: #9ca3af;
+    border: 2px solid #d1d5db; transition: all 0.2s;
+}
+.kz-step-done { background: #dcfce7; color: #16a34a; border-color: #86efac; }
+.kz-step-active { background: #0A2E10; color: #F0D20F; border-color: #C8A200; box-shadow: 0 0 0 3px rgba(200,162,0,0.2); }
+.kz-progress-track { flex: 1; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; }
+.kz-progress-fill { height: 100%; background: linear-gradient(90deg, #5AB496, #0A2E10); border-radius: 10px; transition: width 0.4s ease; }
+
+/* Bloques */
+.kz-bloque {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #d1e8d4;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    overflow: hidden;
+    transition: all 0.25s;
+}
+.kz-bloque-active { display: block; }
+.kz-bloque-done { display: block; opacity: 0.55; pointer-events: none; filter: grayscale(0.3); }
+.kz-bloque-hidden { display: none; }
+
+.kz-bloque-header {
+    background: linear-gradient(135deg, #0A2E10 0%, #1a5c24 100%);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 10px;
+}
+.kz-bloque-num { font-size: 1.1rem; color: #F0D20F; font-weight: 900; }
+.kz-bloque-titulo { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.02em; }
+
+.kz-bloque-body { padding: 20px; }
+.kz-instruccion { font-size: 0.82rem; color: #6b7280; margin-bottom: 14px; line-height: 1.5; border-left: 3px solid #5AB496; padding-left: 10px; background: #f0fdf4; border-radius: 0 6px 6px 0; padding: 8px 12px; }
+
+/* Inputs */
+.kz-label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.kz-label.mt-4 { margin-top: 16px; }
+.kz-textarea {
+    width: 100%; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 10px 12px; font-size: 0.88rem; color: #111827;
+    resize: vertical; transition: border-color 0.2s;
+    font-family: inherit; line-height: 1.55;
+}
+.kz-textarea:focus { outline: none; border-color: #5AB496; box-shadow: 0 0 0 3px rgba(90,180,150,0.15); }
+.kz-input {
+    width: 100%; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 9px 12px; font-size: 0.88rem; color: #111827;
+    transition: border-color 0.2s; font-family: inherit;
+}
+.kz-input:focus { outline: none; border-color: #5AB496; box-shadow: 0 0 0 3px rgba(90,180,150,0.15); }
+.kz-select {
+    width: 100%; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 9px 12px; font-size: 0.88rem; background: #fff;
+    color: #111827; font-family: inherit;
+}
+.kz-select:focus { outline: none; border-color: #5AB496; }
+
+/* 5 Porqués */
+.kz-porque-item { margin-bottom: 14px; }
+.kz-porque-label { font-size: 0.8rem; font-weight: 600; color: #0A2E10; margin-bottom: 5px; }
+.kz-nivel { font-weight: 400; color: #6b7280; }
+.kz-porque-row { display: flex; gap: 6px; align-items: flex-start; }
+.kz-porque-ta { flex: 1; }
+.kz-remove-porque {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: #fee2e2; color: #dc2626; border: none; cursor: pointer;
+    font-size: 0.85rem; line-height: 1; margin-top: 2px;
+    transition: background 0.15s;
+}
+.kz-remove-porque:hover { background: #fca5a5; }
+.kz-btn-add-porque {
+    margin-top: 6px; font-size: 0.8rem; color: #5AB496; background: none;
+    border: 1.5px dashed #5AB496; border-radius: 8px; padding: 6px 14px;
+    cursor: pointer; transition: all 0.15s;
+}
+.kz-btn-add-porque:hover { background: #f0fdf4; }
+
+/* Checks de impacto */
+.kz-checks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 6px; }
+.kz-check-label { display: flex; align-items: center; gap: 8px; font-size: 0.83rem; color: #374151; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid #e5e7eb; transition: background 0.15s; }
+.kz-check-label:hover { background: #f0fdf4; }
+.kz-check-label input { accent-color: #0A2E10; }
+
+/* Botones momento y tipo */
+.kz-momento-group, .kz-tipo-group, .kz-nivel-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.kz-momento-btn, .kz-tipo-btn {
+    padding: 7px 14px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #f9fafb; color: #374151; font-size: 0.82rem; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+}
+.kz-momento-btn:hover, .kz-tipo-btn:hover { border-color: #5AB496; background: #f0fdf4; }
+.kz-momento-active, .kz-tipo-active {
+    background: #0A2E10; color: #F0D20F; border-color: #C8A200; font-weight: 700;
+}
+.kz-nivel-impacto-btn {
+    padding: 8px 20px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #f9fafb; font-size: 0.85rem; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; font-weight: 500;
+}
+.kz-nivel-bajo:hover, .kz-nivel-bajo.kz-nivel-active  { background: #f0fdf4; border-color: #22c55e; color: #15803d; }
+.kz-nivel-medio:hover, .kz-nivel-medio.kz-nivel-active { background: #fefce8; border-color: #eab308; color: #854d0e; }
+.kz-nivel-alto:hover, .kz-nivel-alto.kz-nivel-active   { background: #fff5f5; border-color: #ef4444; color: #b91c1c; }
+.kz-nivel-bajo.kz-nivel-active  { font-weight: 700; }
+.kz-nivel-medio.kz-nivel-active { font-weight: 700; }
+.kz-nivel-alto.kz-nivel-active  { font-weight: 700; }
+
+/* Errores */
+.kz-error { font-size: 0.78rem; color: #dc2626; background: #fff5f5; border: 1px solid #fca5a5; border-radius: 6px; padding: 6px 10px; margin-top: 6px; }
+
+/* Panel chat IA */
+.kz-ia-panel {
+    border: 1px solid #d1e8d4; border-radius: 10px; margin-top: 10px;
+    overflow: hidden; background: #f8fdf9;
+}
+.kz-chat-msgs {
+    max-height: 260px; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.kz-chat-msg {
+    max-width: 88%; padding: 8px 12px; border-radius: 12px;
+    font-size: 0.83rem; line-height: 1.55; word-break: break-word;
+}
+.kz-chat-msg-ia {
+    align-self: flex-start; background: #f0fdf4;
+    border: 1px solid #bbf7d0; color: #166534; border-radius: 4px 12px 12px 12px;
+}
+.kz-chat-msg-ia.kz-chat-msg-pregunta  { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.kz-chat-msg-ia.kz-chat-msg-sugerencia { background: #fefce8; border-color: #fde68a; color: #854d0e; }
+.kz-chat-msg-ia.kz-chat-msg-reformulacion { background: #fdf4ff; border-color: #e9d5ff; color: #6b21a8; }
+.kz-chat-msg-user {
+    align-self: flex-end; background: #0A2E10; color: #F0D20F;
+    border-radius: 12px 4px 12px 12px; font-weight: 500;
+}
+.kz-chat-cargando { color: #9ca3af; font-style: italic; }
+.kz-chat-sugerido { font-style: italic; color: inherit; background: rgba(0,0,0,0.07); border-radius: 3px; padding: 0 3px; }
+.kz-chat-footer { border-top: 1px solid #e5e7eb; background: #fff; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.kz-chat-input-row { display: flex; gap: 6px; }
+.kz-chat-input {
+    flex: 1; border: 1.5px solid #d1d5db; border-radius: 8px;
+    padding: 7px 10px; font-size: 0.83rem; font-family: inherit;
+}
+.kz-chat-input:focus { outline: none; border-color: #5AB496; }
+.kz-chat-send {
+    padding: 7px 14px; border-radius: 8px; background: #0A2E10;
+    color: #F0D20F; border: none; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+}
+.kz-chat-send:hover { background: #1a5c24; }
+.kz-chat-usar {
+    width: 100%; padding: 8px; border-radius: 8px;
+    background: linear-gradient(135deg, #C8A200, #F0D20F);
+    color: #0A2E10; border: none; font-size: 0.83rem; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+}
+.kz-chat-usar:hover { opacity: 0.88; }
+
+/* Botones IA */
+.kz-ia-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.kz-btn-ia {
+    font-size: 0.78rem; padding: 6px 12px; border-radius: 7px;
+    border: 1.5px solid #5AB496; background: #f0fdf4; color: #0A5c24;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.kz-btn-ia:hover { background: #dcfce7; border-color: #22c55e; }
+.kz-btn-ia-sec { background: #fdf4ff; border-color: #c4b5fd; color: #6b21a8; }
+.kz-btn-ia-sec:hover { background: #ede9fe; }
+.kz-btn-sm { font-size: 0.72rem; padding: 4px 9px; margin-top: 4px; }
+
+/* Navegación */
+.kz-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-top: 1px solid #f3f4f6; background: #fafafa;
+}
+.kz-nav-final { justify-content: space-between; }
+.kz-btn-anterior {
+    padding: 8px 20px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #fff; color: #374151; font-size: 0.88rem; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+}
+.kz-btn-anterior:hover { border-color: #9ca3af; background: #f9fafb; }
+.kz-btn-siguiente {
+    padding: 9px 22px; border-radius: 8px;
+    background: linear-gradient(135deg, #0A2E10, #1a5c24);
+    color: #F0D20F; border: 2px solid #C8A200;
+    font-size: 0.9rem; font-weight: 700; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+}
+.kz-btn-siguiente:hover { background: linear-gradient(135deg, #1a5c24, #236b2e); box-shadow: 0 2px 8px rgba(10,46,16,0.3); }
+.kz-btn-enviar {
+    padding: 10px 26px; border-radius: 8px;
+    background: linear-gradient(135deg, #C8A200, #F0D20F);
+    color: #0A2E10; border: none;
+    font-size: 0.95rem; font-weight: 800; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; box-shadow: 0 2px 8px rgba(200,162,0,0.3);
+}
+.kz-btn-enviar:hover { background: linear-gradient(135deg, #d4ab00, #f5d800); box-shadow: 0 4px 12px rgba(200,162,0,0.4); }
+.kz-btn-enviar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Pantalla de éxito */
+.kz-exito {
+    background: #fff; border-radius: 14px; border: 1px solid #d1e8d4;
+    border-top: 4px solid #16a34a; padding: 48px 32px;
+    text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.kz-exito-icon { font-size: 3rem; }
+.kz-exito-titulo { font-size: 1.4rem; font-weight: 800; color: #0A2E10; }
+.kz-exito-msg { font-size: 0.9rem; color: #6b7280; max-width: 420px; line-height: 1.6; }

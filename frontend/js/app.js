@@ -237,7 +237,7 @@ function filtrarPorCategoria(categoria) {
 }
 
 function actualizarBotonesMenu(categoriaActiva) {
-    const botones = ['cartas-nemaec', 'oficios', 'cartas-recibidas', 'contratos', 'seguimiento'];
+    const botones = ['cartas-nemaec', 'oficios', 'cartas-recibidas', 'contratos', 'seguimiento', 'kaizen'];
 
     botones.forEach(cat => {
         const btn = document.getElementById(`btn-${cat}`);

@@ -302,3 +302,38 @@ class SeguimientoCeldaDetalle(Base):
     fecha_actualizacion = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     comisaria = relationship("SeguimientoComisaria", back_populates="detalles")
+
+
+class RegistroMejora(Base):
+    """Registro de Mejora Kaizen — captura estructurada de problemas y aprendizajes"""
+    __tablename__ = "registros_mejora"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario = Column(String(100), nullable=False)
+    proyecto_comisaria = Column(String(255), nullable=True)
+
+    # Bloque 1: Problema
+    problema = Column(Text, nullable=True)
+
+    # Bloque 2: Impacto
+    impacto_descripcion = Column(Text, nullable=True)
+    impacto_tipos = Column(Text, nullable=True)       # JSON: ["Retraso","Sobrecosto",...]
+
+    # Bloque 3: Causa raíz (5 Porqués)
+    porques = Column(Text, nullable=True)             # JSON: ["porqué1","porqué2",...]
+
+    # Bloque 4: Solución
+    solucion = Column(Text, nullable=True)
+    solucion_responsable = Column(String(255), nullable=True)
+    solucion_momento = Column(String(20), nullable=True)  # Antes|Durante|Después
+
+    # Bloque 5: Aprendizaje
+    aprendizaje = Column(Text, nullable=True)
+
+    # Bloque 6: Clasificación
+    clasificacion_tipo = Column(String(50), nullable=True)
+    clasificacion_impacto = Column(String(20), nullable=True)
+
+    estado = Column(String(20), default='draft')      # draft | enviado
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
