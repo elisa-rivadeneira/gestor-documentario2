@@ -411,6 +411,7 @@ class SeguimientoComisariaResponse(BaseModel):
     dossier_remitido_ugpe: Optional[str] = None
     dossier_remitido_pago: Optional[str] = None
     dossier_monto_pagado: Optional[float] = None
+    dossier_monto_merge: Optional[bool] = False
     liq_presentado_ne: Optional[str] = None
     liq_revisado_aprobado: Optional[str] = None
     liq_remitido_pago: Optional[str] = None

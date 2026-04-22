@@ -2,7 +2,7 @@
 Modelos SQLAlchemy para el sistema de gestión de correspondencia
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Float, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -271,6 +271,7 @@ class SeguimientoComisaria(Base):
     dossier_remitido_ugpe = Column(String(5), nullable=True)
     dossier_remitido_pago = Column(String(5), nullable=True)
     dossier_monto_pagado = Column(Float, nullable=True)
+    dossier_monto_merge = Column(Boolean, default=False, nullable=False, server_default='0')
 
     # 5. Informe de Liquidación (Final)
     liq_presentado_ne = Column(String(5), nullable=True)

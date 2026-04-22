@@ -182,6 +182,22 @@ def migrar_documentos():
 
 migrar_documentos()
 
+def migrar_seguimiento():
+    """Agrega columna dossier_monto_merge a seguimiento_comisaria si no existe."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(seguimiento_comisaria)"))
+            columnas = [row[1] for row in result.fetchall()]
+            if 'dossier_monto_merge' not in columnas:
+                conn.execute(text("ALTER TABLE seguimiento_comisaria ADD COLUMN dossier_monto_merge INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+                print("Migración completada: columna dossier_monto_merge agregada")
+    except Exception as e:
+        print(f"Error en migración seguimiento: {e}")
+
+migrar_seguimiento()
+
 # Crear usuarios iniciales si no existen
 crear_usuarios_iniciales()
 
@@ -2463,6 +2479,7 @@ def actualizar_celda(
     # Convertir el valor según el tipo del campo
     CAMPOS_FECHA = {'fecha_fin_contractual', 'acta_fecha_firma'}
     CAMPOS_FLOAT = {'avance_fisico', 'avance_programado', 'dossier_monto_pagado'}
+    CAMPOS_BOOL = {'dossier_monto_merge'}
     valor_convertido = request.valor
     if request.valor is not None and request.valor != '':
         if campo in CAMPOS_FECHA:
@@ -2475,6 +2492,8 @@ def actualizar_celda(
                 valor_convertido = float(request.valor)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Valor numérico inválido")
+        elif campo in CAMPOS_BOOL:
+            valor_convertido = request.valor.lower() in ('true', '1', 'si', 'yes')
     elif request.valor == '':
         valor_convertido = None
 

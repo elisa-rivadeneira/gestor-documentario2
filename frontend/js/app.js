@@ -258,6 +258,11 @@ function actualizarBotonesMenu(categoriaActiva) {
 function mostrarVista(vistaId) {
     document.querySelectorAll('.vista').forEach(v => v.classList.add('hidden'));
     document.getElementById(vistaId).classList.remove('hidden');
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+        mainEl.classList.toggle('!max-w-none', vistaId === 'vista-seguimiento');
+        mainEl.classList.toggle('!px-2', vistaId === 'vista-seguimiento');
+    }
 }
 
 function mostrarBandeja() {
@@ -3568,14 +3573,16 @@ const LABELS_CAMPO = {
     observaciones: 'Observaciones',
     fecha_fin_contractual: 'Fecha Final de Ejecución Contractual',
     avance_fisico: 'Avance Físico (%)',
+    dossier_monto_pagado: 'Monto Pagado (S/)',
 };
 
-// Tipo de campo: 'siono' | 'texto' | 'fecha' | 'numero'
+// Tipo de campo: 'siono' | 'texto' | 'fecha' | 'numero' | 'monto'
 function tipoCampo(campo) {
     if (CAMPOS_SIONO.has(campo)) return 'siono';
     if (campo === 'observaciones') return 'texto';
     if (campo === 'fecha_fin_contractual') return 'fecha';
     if (campo === 'avance_fisico') return 'numero';
+    if (campo === 'dossier_monto_pagado') return 'monto';
     return 'siono';
 }
 
@@ -3707,7 +3714,7 @@ function renderizarSeguimiento() {
         return `<td class="${cls} ${base} celda-readonly" title="${title}">${icono}</td>`;
     }
 
-    tbody.innerHTML = seguimientoData.map((row, idx) => {
+    const rowData = seguimientoData.map((row, idx) => {
         const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
         const fechaFin = row.fecha_fin_contractual ? row.fecha_fin_contractual.substring(0,10) : '';
         const fechaFirma = row.acta_fecha_firma ? row.acta_fecha_firma.substring(0,10) : '';
@@ -3720,18 +3727,6 @@ function renderizarSeguimiento() {
                 <span class="seg-avance-text">${avanceFisPct}%</span>
                </div>`
             : '—';
-        const monto = row.dossier_monto_pagado != null
-            ? `<span class="font-semibold text-emerald-700">S/ ${row.dossier_monto_pagado.toLocaleString('es-PE',{minimumFractionDigits:2})}</span>`
-            : '';
-
-        let celdasHtml = '';
-        for (const campo of camposSiNo) {
-            celdasHtml += celdaSiNo(row, campo, editable);
-            if (campo === 'dossier_remitido_pago') {
-                celdasHtml += `<td class="border border-gray-200 px-2 py-1.5 text-right text-xs">${monto}</td>`;
-            }
-        }
-
         const tdEdit = (campo, display, extraCls = '') => {
             const val = row[campo] ?? '';
             const esc = String(val).replace(/'/g, "\\'");
@@ -3744,7 +3739,46 @@ function renderizarSeguimiento() {
             return `<td class="border border-gray-200 px-1 py-1.5 ${extraCls}">${display}</td>`;
         };
 
-        return `<tr class="${bg} text-xs hover:brightness-95 transition-all">
+        return { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit };
+    });
+
+    let html = '';
+    let skipMontoIdx = -1;
+    for (let i = 0; i < rowData.length; i++) {
+        const { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit } = rowData[i];
+
+        let celdasHtml = '';
+        for (const campo of camposSiNo) {
+            celdasHtml += celdaSiNo(row, campo, editable);
+            if (campo === 'dossier_remitido_pago') {
+                if (skipMontoIdx === i) {
+                    // celda absorbida por rowspan de la fila anterior — no renderizar
+                } else {
+                    const montoVal = row.dossier_monto_pagado;
+                    const montoDisplay = montoVal != null
+                        ? `<span class="font-semibold text-emerald-700">S/ ${montoVal.toLocaleString('es-PE',{minimumFractionDigits:2})}</span>`
+                        : '<span class="text-gray-300 text-[10px]">—</span>';
+                    const mergeIndicator = row.dossier_monto_merge
+                        ? `<div class="text-[8px] text-blue-400 text-center mt-0.5">↕ combinada</div>` : '';
+                    const rowspanAttr = row.dossier_monto_merge ? ' rowspan="2"' : '';
+                    if (row.dossier_monto_merge && i + 1 < rowData.length) {
+                        skipMontoIdx = i + 1;
+                    }
+                    const nomEsc = row.comisaria.replace(/'/g, "\\'");
+                    const montoEsc = montoVal != null ? String(montoVal) : '';
+                    if (editable) {
+                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs cursor-pointer hover:bg-amber-50 group relative" onclick="abrirModalCelda(${row.id},'dossier_monto_pagado','${montoEsc}','${nomEsc}')">
+                            ${montoDisplay}${mergeIndicator}
+                            <span class="absolute top-0.5 right-0.5 text-gray-300 group-hover:text-blue-400 text-[8px]">✎</span>
+                        </td>`;
+                    } else {
+                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs">${montoDisplay}${mergeIndicator}</td>`;
+                    }
+                }
+            }
+        }
+
+        html += `<tr class="${bg} text-xs hover:brightness-95 transition-all">
             <td class="border border-gray-200 px-1 py-1.5 text-center font-bold text-gray-500">${row.numero}</td>
             <td class="border border-gray-200 px-2 py-1.5 font-semibold text-gray-800">${row.comisaria}</td>
             <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-500">${avanceProg}</td>
@@ -3755,7 +3789,22 @@ function renderizarSeguimiento() {
             ${tdEdit('observaciones', row.observaciones ? `<span class="text-gray-600">${row.observaciones}</span>` : '', 'text-left')}
             <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-400 text-[10px] leading-tight">${updatedAt}</td>
         </tr>`;
-    }).join('');
+    }
+    tbody.innerHTML = html;
+
+    // Fila de total en tfoot
+    const totalMonto = seguimientoData.reduce((sum, r) => sum + (r.dossier_monto_pagado ?? 0), 0);
+    const totalFmt = totalMonto > 0
+        ? totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '—';
+    const tfoot = document.getElementById('tfoot-seguimiento');
+    if (tfoot) {
+        tfoot.innerHTML = `<tr class="bg-emerald-50 border-t-2 border-emerald-300 text-xs font-bold">
+            <td colspan="19" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado</td>
+            <td class="px-2 py-2 text-right text-emerald-700 text-sm whitespace-nowrap">S/ ${totalFmt}</td>
+            <td colspan="5" class="px-2 py-2"></td>
+        </tr>`;
+    }
 }
 
 function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
@@ -3774,6 +3823,13 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     const inputSection = document.getElementById('modal-input-section');
     const inputEl = document.getElementById('modal-celda-input');
     const inputLabel = document.getElementById('modal-input-label');
+    const inputPrefix = document.getElementById('modal-input-prefix');
+    const mergeSection = document.getElementById('modal-merge-section');
+    const mergeCheck = document.getElementById('modal-merge-check');
+
+    mergeSection.classList.add('hidden');
+    inputPrefix.classList.add('hidden');
+    inputEl.classList.remove('pl-8');
 
     if (tipo === 'siono') {
         sinoSection.classList.remove('hidden');
@@ -3792,6 +3848,17 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
             inputLabel.textContent = 'Avance físico (%)';
             inputEl.value = valorActual !== '' && valorActual != null
                 ? (parseFloat(valorActual) * 100).toFixed(1) : '';
+        } else if (tipo === 'monto') {
+            inputEl.type = 'number';
+            inputEl.min = '0'; inputEl.max = ''; inputEl.step = '0.01';
+            inputLabel.textContent = 'Monto (S/)';
+            inputEl.value = valorActual !== '' && valorActual != null ? parseFloat(valorActual).toFixed(2) : '';
+            inputPrefix.classList.remove('hidden');
+            inputEl.classList.add('pl-8');
+            // Cargar estado actual de merge desde seguimientoData
+            const rowData = seguimientoData.find(r => r.id === comisariaId);
+            mergeCheck.checked = rowData ? !!rowData.dossier_monto_merge : false;
+            mergeSection.classList.remove('hidden');
         } else {
             inputEl.type = 'text';
             inputLabel.textContent = 'Observaciones';
@@ -3841,6 +3908,9 @@ async function guardarCelda() {
     } else if (tipo === 'numero') {
         const pct = document.getElementById('modal-celda-input').value;
         valor = pct !== '' ? String(parseFloat(pct) / 100) : null;
+    } else if (tipo === 'monto') {
+        const raw = document.getElementById('modal-celda-input').value;
+        valor = raw !== '' ? String(parseFloat(raw)) : null;
     } else {
         valor = document.getElementById('modal-celda-input').value.trim() || null;
     }
@@ -3857,6 +3927,16 @@ async function guardarCelda() {
             body: JSON.stringify({ campo, valor, observacion, enlace })
         });
         if (!res.ok) throw new Error(await res.text());
+
+        // Para monto, también guardar el estado de combinación de celdas
+        if (tipo === 'monto') {
+            const mergeVal = document.getElementById('modal-merge-check').checked ? 'true' : 'false';
+            await fetch(`/api/seguimiento/${comisariaId}/celda`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                body: JSON.stringify({ campo: 'dossier_monto_merge', valor: mergeVal })
+            });
+        }
 
         if (archivo && valor === 'SI') {
             const fd = new FormData();
