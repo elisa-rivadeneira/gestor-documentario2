@@ -264,6 +264,7 @@ class SeguimientoComisaria(Base):
     amp_revisado_aprobado = Column(String(5), nullable=True)
     amp_adenda_firmada = Column(String(5), nullable=True)
     amp_remitido_ugpe = Column(String(5), nullable=True)
+    amp_merge = Column(Boolean, default=False, nullable=False, server_default='0')
 
     # 4. Informe de Culminación y Entrega de Obra (DOSSIER)
     dossier_presentado_ne = Column(String(5), nullable=True)

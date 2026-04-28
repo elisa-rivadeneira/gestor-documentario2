@@ -193,6 +193,10 @@ def migrar_seguimiento():
                 conn.execute(text("ALTER TABLE seguimiento_comisaria ADD COLUMN dossier_monto_merge INTEGER NOT NULL DEFAULT 0"))
                 conn.commit()
                 print("Migración completada: columna dossier_monto_merge agregada")
+            if 'amp_merge' not in columnas:
+                conn.execute(text("ALTER TABLE seguimiento_comisaria ADD COLUMN amp_merge INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+                print("Migración completada: columna amp_merge agregada")
     except Exception as e:
         print(f"Error en migración seguimiento: {e}")
 
@@ -2491,7 +2495,7 @@ def actualizar_celda(
     # Convertir el valor según el tipo del campo
     CAMPOS_FECHA = {'fecha_fin_contractual', 'acta_fecha_firma'}
     CAMPOS_FLOAT = {'avance_fisico', 'avance_programado', 'dossier_monto_pagado'}
-    CAMPOS_BOOL = {'dossier_monto_merge'}
+    CAMPOS_BOOL = {'dossier_monto_merge', 'amp_merge'}
     valor_convertido = request.valor
     if request.valor is not None and request.valor != '':
         if campo in CAMPOS_FECHA:

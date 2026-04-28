@@ -22,7 +22,10 @@ let state = {
     contratosOriginales: [], // Para filtros en frontend
     contratosFiltrados: [],  // Resultado de aplicar filtros
     contratosSortColumn: null,
-    contratosSortDir: 'asc'
+    contratosSortDir: 'asc',
+    documentosSortColumn: null,
+    documentosSortDir: 'asc',
+    documentosCache: []
 };
 
 // ============================================
@@ -161,6 +164,8 @@ function hacerLogout() {
 function filtrarPorCategoria(categoria) {
     state.categoriaActual = categoria;
     state.paginaActual = 1;
+    state.documentosSortColumn = null;
+    state.documentosSortDir = 'asc';
 
     // Restaurar headers de tabla si venimos de contratos (ANTES de buscar elementos)
     restaurarHeadersTablaDocumentos();
@@ -533,6 +538,25 @@ function renderizarDocumentos(data) {
     const totalEl = document.getElementById('total-docs');
 
     totalEl.textContent = `${data.total} documento(s) encontrado(s)`;
+
+    // Actualizar headers con iconos de ordenamiento
+    const theadTr = container.closest('table').querySelector('thead tr');
+    if (theadTr) {
+        const labelDoc = state.categoriaActual === 'oficios' ? 'OFICIO' : 'CARTA';
+        const ocultarRef = state.categoriaActual === 'cartas-nemaec' ? '' : 'hidden';
+        theadTr.innerHTML = `
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NRO</th>
+            <th id="col-documento" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onclick="sortDocumentos('numero')">${labelDoc} ${sortIconDocumento('numero')}</th>
+            <th id="col-referencia" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${ocultarRef}">OFICIO REF.</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onclick="sortDocumentos('fecha')">FECHA ${sortIconDocumento('fecha')}</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onclick="sortDocumentos('asunto')">ASUNTO ${sortIconDocumento('asunto')}</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RESUMEN</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16"></th>
+        `;
+    }
+
+    // Guardar en cache para re-ordenar sin recargar de la API
+    if (!data._fromSort) state.documentosCache = [...data.documentos];
 
     // Determinar colspan según si se muestra la columna de referencia
     const colspan = state.categoriaActual === 'cartas-nemaec' ? 7 : 6;
@@ -1732,6 +1756,54 @@ function sortContratos(columna) {
         total: state.contratosFiltrados.length,
         pagina: 1,
         por_pagina: 100
+    });
+}
+
+function sortIconDocumento(col) {
+    if (state.documentosSortColumn !== col) return '<span class="text-gray-300 ml-1">↕</span>';
+    return state.documentosSortDir === 'asc'
+        ? '<span class="text-blue-500 ml-1">↑</span>'
+        : '<span class="text-blue-500 ml-1">↓</span>';
+}
+
+function _extraerClaveOficio(numero) {
+    // Extrae [año, correlativo] del número de oficio sin importar el formato.
+    // Cubre: "OFICIO N°000295-2025-...", "Oficio: N° 000003-2025", "N°000317-2025", etc.
+    const m = (numero || '').match(/(\d+)-(\d{4})/);
+    if (m) return [parseInt(m[2]), parseInt(m[1])]; // [año, correlativo]
+    // Fallback: intentar extraer cualquier número
+    const n = (numero || '').match(/\d+/);
+    return [0, n ? parseInt(n[0]) : 0];
+}
+
+function sortDocumentos(columna) {
+    if (state.documentosSortColumn === columna) {
+        state.documentosSortDir = state.documentosSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        state.documentosSortColumn = columna;
+        state.documentosSortDir = 'asc';
+    }
+    const dir = state.documentosSortDir === 'asc' ? 1 : -1;
+    state.documentosCache.sort((a, b) => {
+        if (columna === 'numero') {
+            const [ayA, corrA] = _extraerClaveOficio(a.numero);
+            const [ayB, corrB] = _extraerClaveOficio(b.numero);
+            return dir * (ayA !== ayB ? ayA - ayB : corrA - corrB);
+        }
+        if (columna === 'fecha') {
+            return dir * ((a.fecha || '').localeCompare(b.fecha || ''));
+        }
+        if (columna === 'asunto') {
+            return dir * (a.asunto || '').localeCompare(b.asunto || '', 'es');
+        }
+        return 0;
+    });
+    renderizarDocumentos({
+        documentos: state.documentosCache,
+        total: state.documentosCache.length,
+        pagina: 1,
+        por_pagina: 100,
+        _fromSort: true
     });
 }
 
@@ -3710,7 +3782,7 @@ function renderizarSeguimiento() {
         '-':   '<span style="font-size:1rem;opacity:0.3">—</span>',
     };
 
-    function celdaSiNo(row, campo, editable) {
+    function celdaSiNo(row, campo, editable, rowspanAttr = '', mergeIndicator = '') {
         const val = row[campo] || '';
         let cls = 'celda-dash';
         if (val === 'SI') cls = 'celda-si';
@@ -3727,9 +3799,9 @@ function renderizarSeguimiento() {
         const icono = ICONOS[val] ?? val;
         const base = 'border border-gray-200 px-1 py-1.5';
         if (editable) {
-            return `<td class="${cls} ${base}" onclick="abrirModalCelda(${row.id},'${campo}','${val}','${row.comisaria.replace(/'/g,'\\\'')}')" title="${title}">${icono}</td>`;
+            return `<td${rowspanAttr} class="${cls} ${base}" onclick="abrirModalCelda(${row.id},'${campo}','${val}','${row.comisaria.replace(/'/g,'\\\'')}')" title="${title}">${icono}${mergeIndicator}</td>`;
         }
-        return `<td class="${cls} ${base} celda-readonly" title="${title}">${icono}</td>`;
+        return `<td${rowspanAttr} class="${cls} ${base} celda-readonly" title="${title}">${icono}${mergeIndicator}</td>`;
     }
 
     const rowData = seguimientoData.map((row, idx) => {
@@ -3760,13 +3832,29 @@ function renderizarSeguimiento() {
         return { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit };
     });
 
+    const AMP_CAMPOS = ['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe'];
+    const AMP_CAMPOS_SET = new Set(AMP_CAMPOS);
+
     let html = '';
     let skipMontoIdx = -1;
+    let skipAmpIdx = -1;
     for (let i = 0; i < rowData.length; i++) {
         const { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit } = rowData[i];
 
         let celdasHtml = '';
         for (const campo of camposSiNo) {
+            if (AMP_CAMPOS_SET.has(campo)) {
+                if (skipAmpIdx === i) {
+                    // celda absorbida por rowspan de la fila anterior — no renderizar
+                } else {
+                    const rowspanAttr = row.amp_merge ? ' rowspan="2"' : '';
+                    const mergeIndicator = (row.amp_merge && campo === AMP_CAMPOS[0])
+                        ? `<div class="text-[8px] text-blue-400 text-center mt-0.5">↕</div>` : '';
+                    if (row.amp_merge && i + 1 < rowData.length) skipAmpIdx = i + 1;
+                    celdasHtml += celdaSiNo(row, campo, editable, rowspanAttr, mergeIndicator);
+                }
+                continue;
+            }
             celdasHtml += celdaSiNo(row, campo, editable);
             if (campo === 'dossier_remitido_pago') {
                 if (skipMontoIdx === i) {
@@ -3849,10 +3937,19 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     inputPrefix.classList.add('hidden');
     inputEl.classList.remove('pl-8');
 
+    const AMP_CAMPOS_MODAL = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe']);
+
     if (tipo === 'siono') {
         sinoSection.classList.remove('hidden');
         inputSection.classList.add('hidden');
         resaltarBotonValor(valorActual);
+        if (AMP_CAMPOS_MODAL.has(campo)) {
+            const rowAmp = seguimientoData.find(r => r.id === comisariaId);
+            mergeCheck.checked = rowAmp ? !!rowAmp.amp_merge : false;
+            document.getElementById('modal-merge-desc').textContent =
+                'Combina las 4 columnas de Ampliación de Plazo con la fila siguiente.';
+            mergeSection.classList.remove('hidden');
+        }
     } else {
         sinoSection.classList.add('hidden');
         inputSection.classList.remove('hidden');
@@ -3873,9 +3970,10 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
             inputEl.value = valorActual !== '' && valorActual != null ? parseFloat(valorActual).toFixed(2) : '';
             inputPrefix.classList.remove('hidden');
             inputEl.classList.add('pl-8');
-            // Cargar estado actual de merge desde seguimientoData
             const rowData = seguimientoData.find(r => r.id === comisariaId);
             mergeCheck.checked = rowData ? !!rowData.dossier_monto_merge : false;
+            document.getElementById('modal-merge-desc').textContent =
+                'Útil cuando un contrato cubre dos comisarías con el mismo monto.';
             mergeSection.classList.remove('hidden');
         } else {
             inputEl.type = 'text';
@@ -3953,6 +4051,16 @@ async function guardarCelda() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
                 body: JSON.stringify({ campo: 'dossier_monto_merge', valor: mergeVal })
+            });
+        }
+        // Para ampliación de plazo, guardar el estado de combinación de celdas
+        const AMP_CAMPOS_SAVE = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe']);
+        if (AMP_CAMPOS_SAVE.has(campo)) {
+            const mergeVal = document.getElementById('modal-merge-check').checked ? 'true' : 'false';
+            await fetch(`/api/seguimiento/${comisariaId}/celda`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                body: JSON.stringify({ campo: 'amp_merge', valor: mergeVal })
             });
         }
 

@@ -8,16 +8,15 @@ venv/
 ENV/
 .env
 
-# Database
-*.db
+# Database (excluir backups, incluir DB principal)
 *.sqlite3
+correspondencia.db.backup_*
 
 # Data de producción (base de datos + uploads)
 data/
 
-# Uploads (archivos subidos por usuarios)
-uploads/*
-!uploads/.gitkeep
+# Backups de DB
+*.db.backup_*
 
 # IDE
 .vscode/

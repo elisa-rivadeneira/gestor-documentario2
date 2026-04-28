@@ -406,6 +406,7 @@ class SeguimientoComisariaResponse(BaseModel):
     amp_revisado_aprobado: Optional[str] = None
     amp_adenda_firmada: Optional[str] = None
     amp_remitido_ugpe: Optional[str] = None
+    amp_merge: Optional[bool] = False
     dossier_presentado_ne: Optional[str] = None
     dossier_revisado_aprobado: Optional[str] = None
     dossier_remitido_ugpe: Optional[str] = None
