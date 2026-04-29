@@ -1,32 +1,27 @@
 #!/bin/bash
 
-# Script de inicio para el servidor
-# Copia la base de datos inicial solo si no existe en el volumen
-
 DATA_DIR="/data"
 DB_FILE="$DATA_DIR/correspondencia.db"
 INITIAL_DB="/app/correspondencia.db.initial"
 UPLOADS_DIR="$DATA_DIR/uploads"
 
-# Crear directorios de datos si no existen
 mkdir -p $DATA_DIR
 mkdir -p $UPLOADS_DIR
 
-# Si no existe la base de datos en el volumen, copiar la inicial
-if [ ! -f "$DB_FILE" ]; then
-    echo "Base de datos no encontrada en $DB_FILE"
-    if [ -f "$INITIAL_DB" ]; then
-        echo "Copiando base de datos inicial..."
+if [ -f "$INITIAL_DB" ]; then
+    INITIAL_HASH=$(md5sum "$INITIAL_DB" | cut -d' ' -f1)
+    CURRENT_HASH=$(md5sum "$DB_FILE" 2>/dev/null | cut -d' ' -f1)
+    if [ "$INITIAL_HASH" != "$CURRENT_HASH" ]; then
+        echo "Nueva versión de base de datos detectada, actualizando..."
         cp "$INITIAL_DB" "$DB_FILE"
-        echo "Base de datos copiada exitosamente"
+        echo "Base de datos actualizada"
     else
-        echo "No hay base de datos inicial, se creará una nueva"
+        echo "Base de datos ya está al día"
     fi
 else
-    echo "Base de datos existente encontrada en $DB_FILE"
+    echo "No hay base de datos inicial en la imagen"
 fi
 
-# Iniciar el servidor
 echo "Iniciando servidor..."
 cd /app/backend
 exec uvicorn main:app --host 0.0.0.0 --port 8000
