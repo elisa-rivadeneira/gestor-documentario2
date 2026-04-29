@@ -3620,7 +3620,7 @@ async function exportarCartaDocx() {
 const CAMPOS_SIONO = new Set([
     'acta_revisada','acta_remitida_ugpe',
     'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
-    'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe',
+    'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
     'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
     'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
 ]);
@@ -3634,7 +3634,6 @@ const LABELS_CAMPO = {
     amp_presentado_ne: 'Amp. Plazo: Presentado al NE',
     amp_revisado_aprobado: 'Amp. Plazo: Revisado y aprobado',
     amp_adenda_firmada: 'Amp. Plazo: Adenda firmada',
-    amp_remitido_ugpe: 'Amp. Plazo: Remitido a UGPE',
     dossier_presentado_ne: 'Dossier: Presentado al NE',
     dossier_revisado_aprobado: 'Dossier: Revisado y aprobado',
     dossier_remitido_ugpe: 'Dossier: Remitido a UGPE',
@@ -3691,7 +3690,7 @@ function copiarLinkSeguimiento() {
 
 async function cargarSeguimiento() {
     const tbody = document.getElementById('tbody-seguimiento');
-    tbody.innerHTML = '<tr><td colspan="24" class="text-center py-6 text-gray-400">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="23" class="text-center py-6 text-gray-400">Cargando...</td></tr>';
     const aviso = document.getElementById('seg-aviso-readonly');
     if (estaAutenticado()) {
         aviso.classList.add('hidden');
@@ -3703,7 +3702,7 @@ async function cargarSeguimiento() {
         seguimientoData = await res.json();
         renderizarSeguimiento();
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="24" class="text-center py-6 text-red-500">Error al cargar datos</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="23" class="text-center py-6 text-red-500">Error al cargar datos</td></tr>';
     }
 }
 
@@ -3711,7 +3710,7 @@ function renderizarSeguimiento() {
     const tbody = document.getElementById('tbody-seguimiento');
     const editable = estaAutenticado();
     if (!seguimientoData.length) {
-        tbody.innerHTML = '<tr><td colspan="25" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="24" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
         return;
     }
 
@@ -3769,7 +3768,7 @@ function renderizarSeguimiento() {
     const camposSiNo = [
         'acta_revisada','acta_remitida_ugpe',
         'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
-        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe',
+        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
         'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
     ];
@@ -3832,7 +3831,7 @@ function renderizarSeguimiento() {
         return { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit };
     });
 
-    const AMP_CAMPOS = ['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe'];
+    const AMP_CAMPOS = ['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada'];
     const AMP_CAMPOS_SET = new Set(AMP_CAMPOS);
 
     let html = '';
@@ -3906,7 +3905,7 @@ function renderizarSeguimiento() {
     const tfoot = document.getElementById('tfoot-seguimiento');
     if (tfoot) {
         tfoot.innerHTML = `<tr class="bg-emerald-50 border-t-2 border-emerald-300 text-xs font-bold">
-            <td colspan="19" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado</td>
+            <td colspan="18" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado</td>
             <td class="px-2 py-2 text-right text-emerald-700 text-sm whitespace-nowrap">S/ ${totalFmt}</td>
             <td colspan="5" class="px-2 py-2"></td>
         </tr>`;
@@ -3937,7 +3936,7 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     inputPrefix.classList.add('hidden');
     inputEl.classList.remove('pl-8');
 
-    const AMP_CAMPOS_MODAL = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe']);
+    const AMP_CAMPOS_MODAL = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
 
     if (tipo === 'siono') {
         sinoSection.classList.remove('hidden');
@@ -4054,7 +4053,7 @@ async function guardarCelda() {
             });
         }
         // Para ampliación de plazo, guardar el estado de combinación de celdas
-        const AMP_CAMPOS_SAVE = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe']);
+        const AMP_CAMPOS_SAVE = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
         if (AMP_CAMPOS_SAVE.has(campo)) {
             const mergeVal = document.getElementById('modal-merge-check').checked ? 'true' : 'false';
             await fetch(`/api/seguimiento/${comisariaId}/celda`, {

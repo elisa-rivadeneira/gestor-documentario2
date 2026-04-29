@@ -2224,7 +2224,7 @@ def exportar_carta_docx(
 CAMPOS_SIONO = {
     'acta_revisada', 'acta_remitida_ugpe',
     'mod_presentado_ne', 'mod_revisado_aprobado', 'mod_remitido_ugpe',
-    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada', 'amp_remitido_ugpe',
+    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada',
     'dossier_presentado_ne', 'dossier_revisado_aprobado', 'dossier_remitido_ugpe', 'dossier_remitido_pago',
     'liq_presentado_ne', 'liq_revisado_aprobado', 'liq_remitido_pago',
 }
@@ -2294,10 +2294,10 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("E2","E3","FECHA FINAL\nEJECUCIÓN CONTRACTUAL", C_TITLE),
         ("F2","H2","1. ACTA DE CONFORMIDAD\nDE EJECUCIÓN Y RECEPCIÓN FÍSICA", C_GRP),
         ("I2","K2","2. INFORME DE MODIFICACIÓN\nDE PARTIDAS (UGPE)", C_GRP),
-        ("L2","O2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
-        ("P2","T2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
-        ("U2","W2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
-        ("X2","X3","OBSERVACIONES", C_TITLE),
+        ("L2","N2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
+        ("O2","S2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
+        ("T2","V2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
+        ("W2","W3","OBSERVACIONES", C_TITLE),
     ]
     for start, end, label, color in grupos:
         if start != end:
@@ -2314,7 +2314,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.merge_cells("A2:A3")
     ws.merge_cells("B2:B3")
     ws.merge_cells("E2:E3")
-    ws.merge_cells("X2:X3")
+    ws.merge_cells("W2:W3")
 
     sub_hdrs = [
         ("C3", "PROGRAMADO"),
@@ -2328,15 +2328,14 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("L3", "PRESENTADO\nAL NE"),
         ("M3", "REVISADO Y\nAPROBADO"),
         ("N3", "ADENDA\nFIRMADA"),
-        ("O3", "REMITIDO\nA UGPE"),
-        ("P3", "PRESENTADO\nAL NE"),
-        ("Q3", "REVISADO Y\nAPROBADO"),
-        ("R3", "REMITIDO\nA UGPE"),
-        ("S3", "REMITIDO\nPARA PAGO"),
-        ("T3", "MONTO\nPAGADO (S/)"),
-        ("U3", "PRESENTADO\nAL NE"),
-        ("V3", "REVISADO Y\nAPROBADO"),
-        ("W3", "REMITIDO\nPARA PAGO"),
+        ("O3", "PRESENTADO\nAL NE"),
+        ("P3", "REVISADO Y\nAPROBADO"),
+        ("Q3", "REMITIDO\nA UGPE"),
+        ("R3", "REMITIDO\nPARA PAGO"),
+        ("S3", "MONTO\nPAGADO (S/)"),
+        ("T3", "PRESENTADO\nAL NE"),
+        ("U3", "REVISADO Y\nAPROBADO"),
+        ("V3", "REMITIDO\nPARA PAGO"),
     ]
     for cell_ref, label in sub_hdrs:
         c = ws[cell_ref]
@@ -2351,14 +2350,14 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     campos_siono = [
         'acta_revisada','acta_remitida_ugpe',
         'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
-        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada','amp_remitido_ugpe',
+        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
         'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
     ]
-    # G(7)..S(19) + saltar T(20)=monto → U(21)..W(23)
+    # G(7)..R(18) + saltar S(19)=monto → T(20)..V(22)
     col_map = {campo: idx for idx, campo in enumerate(campos_siono, start=7)}
     for campo, col in list(col_map.items()):
-        if col >= 20:
+        if col >= 19:
             col_map[campo] = col + 1
 
     data_first_row = 4
