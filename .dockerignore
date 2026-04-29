@@ -1,0 +1,12 @@
+uploads/
+data/
+.git/
+.claude/
+*.db.backup_*
+__pycache__/
+*.py[cod]
+.env
+venv/
+ENV/
+*.log
+*.tmp

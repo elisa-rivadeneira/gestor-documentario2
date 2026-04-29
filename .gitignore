@@ -14,6 +14,7 @@ correspondencia.db.backup_*
 
 # Data de producción (base de datos + uploads)
 data/
+uploads/
 
 # Backups de DB
 *.db.backup_*
