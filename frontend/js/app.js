@@ -3720,6 +3720,25 @@ function renderizarSeguimiento() {
     const resEl = document.getElementById('seg-resumen');
     if (resEl) {
         const aplica = campo => seguimientoData.filter(r => r[campo] === 'SI' || r[campo] === 'NO').length;
+
+        // Para campos AMP: celdas combinadas (amp_merge) cuentan como 1, no como 2
+        const siAmp = campo => {
+            let count = 0;
+            for (let i = 0; i < seguimientoData.length; i++) {
+                if (seguimientoData[i][campo] === 'SI') count++;
+                if (seguimientoData[i].amp_merge) i++;
+            }
+            return count;
+        };
+        const aplicaAmp = campo => {
+            let count = 0;
+            for (let i = 0; i < seguimientoData.length; i++) {
+                if (seguimientoData[i][campo] === 'SI' || seguimientoData[i][campo] === 'NO') count++;
+                if (seguimientoData[i].amp_merge) i++;
+            }
+            return count;
+        };
+
         const cards = [
             {
                 icon: '📋', iconBg: 'rgba(100,116,139,0.12)',
@@ -3729,14 +3748,14 @@ function renderizarSeguimiento() {
             },
             {
                 icon: '📅', iconBg: 'rgba(100,116,139,0.12)',
-                num: si('amp_presentado_ne'),
-                total: aplica('amp_presentado_ne'),
+                num: siAmp('amp_presentado_ne'),
+                total: aplicaAmp('amp_presentado_ne'),
                 label: 'Informes de Ampliación<br>de Plazo presentados'
             },
             {
                 icon: '✍️', iconBg: 'rgba(100,116,139,0.12)',
-                num: si('amp_adenda_firmada'),
-                total: aplica('amp_adenda_firmada'),
+                num: siAmp('amp_adenda_firmada'),
+                total: aplicaAmp('amp_adenda_firmada'),
                 label: 'Adendas<br>firmadas'
             },
             {
