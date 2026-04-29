@@ -3847,10 +3847,8 @@ function renderizarSeguimiento() {
                     // celda absorbida por rowspan de la fila anterior — no renderizar
                 } else {
                     const rowspanAttr = row.amp_merge ? ' rowspan="2"' : '';
-                    const mergeIndicator = (row.amp_merge && campo === AMP_CAMPOS[0])
-                        ? `<div class="text-[8px] text-blue-400 text-center mt-0.5">↕</div>` : '';
                     if (row.amp_merge && i + 1 < rowData.length) skipAmpIdx = i + 1;
-                    celdasHtml += celdaSiNo(row, campo, editable, rowspanAttr, mergeIndicator);
+                    celdasHtml += celdaSiNo(row, campo, editable, rowspanAttr);
                 }
                 continue;
             }
@@ -3863,8 +3861,6 @@ function renderizarSeguimiento() {
                     const montoDisplay = montoVal != null
                         ? `<span class="font-semibold text-emerald-700">S/ ${montoVal.toLocaleString('es-PE',{minimumFractionDigits:2})}</span>`
                         : '<span class="text-gray-300 text-[10px]">—</span>';
-                    const mergeIndicator = row.dossier_monto_merge
-                        ? `<div class="text-[8px] text-blue-400 text-center mt-0.5">↕ combinada</div>` : '';
                     const rowspanAttr = row.dossier_monto_merge ? ' rowspan="2"' : '';
                     if (row.dossier_monto_merge && i + 1 < rowData.length) {
                         skipMontoIdx = i + 1;
@@ -3873,11 +3869,11 @@ function renderizarSeguimiento() {
                     const montoEsc = montoVal != null ? String(montoVal) : '';
                     if (editable) {
                         celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs cursor-pointer hover:bg-amber-50 group relative" onclick="abrirModalCelda(${row.id},'dossier_monto_pagado','${montoEsc}','${nomEsc}')">
-                            ${montoDisplay}${mergeIndicator}
+                            ${montoDisplay}
                             <span class="absolute top-0.5 right-0.5 text-gray-300 group-hover:text-blue-400 text-[8px]">✎</span>
                         </td>`;
                     } else {
-                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs">${montoDisplay}${mergeIndicator}</td>`;
+                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs">${montoDisplay}</td>`;
                     }
                 }
             }
