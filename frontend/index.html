@@ -126,9 +126,11 @@
                 <!-- Barra de búsqueda -->
                 <div class="flex gap-2">
                     <input type="text" id="filtro-busqueda"
-                           placeholder="Buscar por número, asunto, remitente..."
+                           placeholder="Buscar por N°, asunto, remitente..."
                            onkeyup="debounce(buscarSegunCategoria, 300)()"
-                           autocomplete="new-password"
+                           autocomplete="off"
+                           readonly
+                           onfocus="this.removeAttribute('readonly')"
                            class="flex-1 border rounded-lg px-3 py-2">
                     <input type="text" id="filtro-referencia"
                            placeholder="Filtrar por oficio de referencia..."
