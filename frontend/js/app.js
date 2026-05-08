@@ -3619,7 +3619,7 @@ async function exportarCartaDocx() {
 
 const CAMPOS_SIONO = new Set([
     'acta_revisada','acta_remitida_ugpe',
-    'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
+    'mod_presentado_ne','mod_revisado_aprobado',
     'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
     'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
     'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
@@ -3630,7 +3630,6 @@ const LABELS_CAMPO = {
     acta_remitida_ugpe: 'Acta: Remitida a UGPE',
     mod_presentado_ne: 'Mod. Partidas: Presentado al NE',
     mod_revisado_aprobado: 'Mod. Partidas: Revisado y aprobado',
-    mod_remitido_ugpe: 'Mod. Partidas: Remitido a UGPE',
     amp_presentado_ne: 'Amp. Plazo: Presentado al NE',
     amp_revisado_aprobado: 'Amp. Plazo: Revisado y aprobado',
     amp_adenda_firmada: 'Amp. Plazo: Adenda firmada',
@@ -3710,7 +3709,7 @@ function renderizarSeguimiento() {
     const tbody = document.getElementById('tbody-seguimiento');
     const editable = estaAutenticado();
     if (!seguimientoData.length) {
-        tbody.innerHTML = '<tr><td colspan="24" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="23" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
         return;
     }
 
@@ -3759,12 +3758,6 @@ function renderizarSeguimiento() {
                 label: 'Adendas<br>firmadas'
             },
             {
-                icon: '📤', iconBg: 'rgba(100,116,139,0.12)',
-                num: si('mod_remitido_ugpe'),
-                total: aplica('mod_remitido_ugpe'),
-                label: 'Inf. Modificación de Partidas<br>remitidos a UGPE'
-            },
-            {
                 icon: '📦', iconBg: 'rgba(100,116,139,0.12)',
                 num: si('dossier_presentado_ne'),
                 total: aplica('dossier_presentado_ne'),
@@ -3786,7 +3779,7 @@ function renderizarSeguimiento() {
 
     const camposSiNo = [
         'acta_revisada','acta_remitida_ugpe',
-        'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
+        'mod_presentado_ne','mod_revisado_aprobado',
         'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
         'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',

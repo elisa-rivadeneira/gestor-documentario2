@@ -2223,7 +2223,7 @@ def exportar_carta_docx(
 
 CAMPOS_SIONO = {
     'acta_revisada', 'acta_remitida_ugpe',
-    'mod_presentado_ne', 'mod_revisado_aprobado', 'mod_remitido_ugpe',
+    'mod_presentado_ne', 'mod_revisado_aprobado',
     'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada',
     'dossier_presentado_ne', 'dossier_revisado_aprobado', 'dossier_remitido_ugpe', 'dossier_remitido_pago',
     'liq_presentado_ne', 'liq_revisado_aprobado', 'liq_remitido_pago',
@@ -2277,7 +2277,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     brd = _border()
 
     # ── FILA 1: Título ──────────────────────────────────────────────
-    ws.merge_cells("A1:X1")
+    ws.merge_cells("A1:W1")
     c = ws["A1"]
     c.value = "SEGUIMIENTO AL PROCESO DE LIQUIDACIÓN - MANTENIMIENTO Y ACONDICIONAMIENTO DE COMISARÍAS"
     c.fill = _color(C_TITLE)
@@ -2293,11 +2293,11 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("C2","D2","AVANCE DE EJECUCIÓN", C_TITLE),
         ("E2","E3","FECHA FINAL\nEJECUCIÓN CONTRACTUAL", C_TITLE),
         ("F2","H2","1. ACTA DE CONFORMIDAD\nDE EJECUCIÓN Y RECEPCIÓN FÍSICA", C_GRP),
-        ("I2","K2","2. INFORME DE MODIFICACIÓN\nDE PARTIDAS (UGPE)", C_GRP),
-        ("L2","N2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
-        ("O2","S2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
-        ("T2","V2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
-        ("W2","W3","OBSERVACIONES", C_TITLE),
+        ("I2","J2","2. INFORME DE MODIFICACIÓN\nDE PARTIDAS (UGPE)", C_GRP),
+        ("K2","M2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
+        ("N2","R2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
+        ("S2","U2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
+        ("V2","V3","OBSERVACIONES", C_TITLE),
     ]
     for start, end, label, color in grupos:
         if start != end:
@@ -2314,7 +2314,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.merge_cells("A2:A3")
     ws.merge_cells("B2:B3")
     ws.merge_cells("E2:E3")
-    ws.merge_cells("W2:W3")
+    ws.merge_cells("V2:V3")
 
     sub_hdrs = [
         ("C3", "PROGRAMADO"),
@@ -2324,18 +2324,17 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("H3", "REMITIDA\nA UGPE"),
         ("I3", "PRESENTADO\nAL NE"),
         ("J3", "REVISADO Y\nAPROBADO"),
-        ("K3", "REMITIDO\nA UGPE"),
-        ("L3", "PRESENTADO\nAL NE"),
-        ("M3", "REVISADO Y\nAPROBADO"),
-        ("N3", "ADENDA\nFIRMADA"),
-        ("O3", "PRESENTADO\nAL NE"),
-        ("P3", "REVISADO Y\nAPROBADO"),
-        ("Q3", "REMITIDO\nA UGPE"),
-        ("R3", "REMITIDO\nPARA PAGO"),
-        ("S3", "MONTO\nPAGADO (S/)"),
-        ("T3", "PRESENTADO\nAL NE"),
-        ("U3", "REVISADO Y\nAPROBADO"),
-        ("V3", "REMITIDO\nPARA PAGO"),
+        ("K3", "PRESENTADO\nAL NE"),
+        ("L3", "REVISADO Y\nAPROBADO"),
+        ("M3", "ADENDA\nFIRMADA"),
+        ("N3", "PRESENTADO\nAL NE"),
+        ("O3", "REVISADO Y\nAPROBADO"),
+        ("P3", "REMITIDO\nA UGPE"),
+        ("Q3", "REMITIDO\nPARA PAGO"),
+        ("R3", "MONTO\nPAGADO (S/)"),
+        ("S3", "PRESENTADO\nAL NE"),
+        ("T3", "REVISADO Y\nAPROBADO"),
+        ("U3", "REMITIDO\nPARA PAGO"),
     ]
     for cell_ref, label in sub_hdrs:
         c = ws[cell_ref]
@@ -2349,15 +2348,15 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     # ── FILAS DE DATOS ───────────────────────────────────────────────
     campos_siono = [
         'acta_revisada','acta_remitida_ugpe',
-        'mod_presentado_ne','mod_revisado_aprobado','mod_remitido_ugpe',
+        'mod_presentado_ne','mod_revisado_aprobado',
         'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
         'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
     ]
-    # G(7)..R(18) + saltar S(19)=monto → T(20)..V(22)
+    # G(7)..Q(17) + saltar R(18)=monto → S(19)..U(21)
     col_map = {campo: idx for idx, campo in enumerate(campos_siono, start=7)}
     for campo, col in list(col_map.items()):
-        if col >= 19:
+        if col >= 18:
             col_map[campo] = col + 1
 
     data_first_row = 4
@@ -2401,17 +2400,17 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
                 c.fill = _color(C_NA)
                 c.font = _font(color=C_NA_TXT)
 
-        # Monto pagado (col T = 20)
+        # Monto pagado (col R = 18)
         if row.dossier_monto_pagado is not None:
-            cell(20).value = row.dossier_monto_pagado
-            cell(20).number_format = '#,##0.00'
-            cell(20).alignment = _align("right")
+            cell(18).value = row.dossier_monto_pagado
+            cell(18).number_format = '#,##0.00'
+            cell(18).alignment = _align("right")
 
-        cell(24).value = row.observaciones or ''
-        cell(24).alignment = _align("left")
+        cell(23).value = row.observaciones or ''
+        cell(23).alignment = _align("left")
 
         # Borde y fondo alternado
-        for col_num in range(1, 25):
+        for col_num in range(1, 24):
             c = cell(col_num)
             c.border = brd
             try:
@@ -2430,7 +2429,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     # ── ANCHOS DE COLUMNA ────────────────────────────────────────────
     col_widths = {1:4, 2:22, 3:7, 4:8.43, 5:11, 6:11,
                   7:7,8:7,9:7,10:7,11:7,12:7,13:7,14:7,15:7,
-                  16:7,17:7,18:7,19:7,20:13,21:7,22:7,23:7,24:22}
+                  16:7,17:7,18:13,19:7,20:7,21:7,22:7,23:22}
     for col_num, width in col_widths.items():
         ws.column_dimensions[get_column_letter(col_num)].width = width
 
@@ -2444,12 +2443,12 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.cell(total_row, 3).number_format = "0%"
     ws.cell(total_row, 4).value = f"=AVERAGE(D{data_first_row}:D{last_data_row})"
     ws.cell(total_row, 4).number_format = "0.00%"
-    # Total monto pagado (col T=20)
-    ws.cell(total_row, 20).value = f"=SUM(T{data_first_row}:T{last_data_row})"
-    ws.cell(total_row, 20).number_format = '#,##0.00'
-    ws.cell(total_row, 20).alignment = _align("right")
-    ws.cell(total_row, 20).font = _font(bold=True, color="145f2e", size=10)
-    for col_num in range(1, 25):
+    # Total monto pagado (col R=18)
+    ws.cell(total_row, 18).value = f"=SUM(R{data_first_row}:R{last_data_row})"
+    ws.cell(total_row, 18).number_format = '#,##0.00'
+    ws.cell(total_row, 18).alignment = _align("right")
+    ws.cell(total_row, 18).font = _font(bold=True, color="145f2e", size=10)
+    for col_num in range(1, 24):
         c = ws.cell(total_row, col_num)
         c.border = brd
         c.fill = _color("E2E8F0")
