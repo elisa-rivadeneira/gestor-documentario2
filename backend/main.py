@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Header
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Header, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -183,27 +183,75 @@ def migrar_documentos():
 migrar_documentos()
 
 def migrar_seguimiento():
-    """Agrega columna dossier_monto_merge a seguimiento_comisaria si no existe."""
+    """Agrega columnas nuevas a seguimiento_comisaria si no existen."""
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
             result = conn.execute(text("PRAGMA table_info(seguimiento_comisaria)"))
             columnas = [row[1] for row in result.fetchall()]
-            if 'dossier_monto_merge' not in columnas:
-                conn.execute(text("ALTER TABLE seguimiento_comisaria ADD COLUMN dossier_monto_merge INTEGER NOT NULL DEFAULT 0"))
-                conn.commit()
-                print("Migración completada: columna dossier_monto_merge agregada")
-            if 'amp_merge' not in columnas:
-                conn.execute(text("ALTER TABLE seguimiento_comisaria ADD COLUMN amp_merge INTEGER NOT NULL DEFAULT 0"))
-                conn.commit()
-                print("Migración completada: columna amp_merge agregada")
+            for col, defn in [
+                ('dossier_monto_merge', 'INTEGER NOT NULL DEFAULT 0'),
+                ('amp_merge',           'INTEGER NOT NULL DEFAULT 0'),
+                ('amp_remitido_ugpe',   'TEXT'),
+                ('orden_fila',          'INTEGER'),
+                ('extra_1',             'TEXT'),
+                ('extra_2',             'TEXT'),
+                ('extra_3',             'TEXT'),
+                ('extra_4',             'TEXT'),
+                ('extra_5',             'TEXT'),
+            ]:
+                if col not in columnas:
+                    conn.execute(text(f"ALTER TABLE seguimiento_comisaria ADD COLUMN {col} {defn}"))
+                    conn.commit()
+                    print(f"Migración: columna {col} agregada a seguimiento_comisaria")
+            # Inicializar orden_fila a partir de numero
+            conn.execute(text("UPDATE seguimiento_comisaria SET orden_fila = numero WHERE orden_fila IS NULL"))
+            conn.commit()
     except Exception as e:
         print(f"Error en migración seguimiento: {e}")
 
 migrar_seguimiento()
 
+def migrar_usuarios():
+    """Agrega columna role a usuarios si no existe."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(usuarios)"))
+            columnas = [row[1] for row in result.fetchall()]
+            if 'role' not in columnas:
+                conn.execute(text("ALTER TABLE usuarios ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'"))
+                conn.commit()
+                print("Migración: columna role agregada a usuarios")
+    except Exception as e:
+        print(f"Error en migración usuarios: {e}")
+
+migrar_usuarios()
+
 # Crear usuarios iniciales si no existen
 crear_usuarios_iniciales()
+
+def crear_superadmin():
+    """Crea el usuario superadmin si no existe."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        if not db.query(Usuario).filter(Usuario.username == 'superadmin').first():
+            db.add(Usuario(
+                username='superadmin',
+                password_hash=hash_password('SuperAdmin2026*'),
+                nombre='Super Administrador',
+                activo=1,
+                role='superadmin'
+            ))
+            db.commit()
+            print("Usuario superadmin creado")
+    except Exception as e:
+        print(f"Error creando superadmin: {e}")
+    finally:
+        db.close()
+
+crear_superadmin()
 
 def seed_seguimiento():
     """Pobla la tabla seguimiento_comisaria con los datos del Excel si está vacía."""
@@ -315,6 +363,14 @@ def verificar_admin(authorization: Optional[str] = Header(None)) -> Usuario:
     return payload
 
 
+def verificar_superadmin(authorization: Optional[str] = Header(None)) -> dict:
+    """Dependency que requiere rol superadmin."""
+    payload = verificar_admin(authorization)
+    if payload.get('role') != 'superadmin':
+        raise HTTPException(status_code=403, detail="Acción reservada para superadmin")
+    return payload
+
+
 def verificar_admin_opcional(authorization: Optional[str] = Header(None)) -> Optional[dict]:
     """
     Dependency opcional - no falla si no hay token, solo retorna None.
@@ -352,12 +408,14 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
 
     # Generar token
-    token = create_token(usuario.username, usuario.nombre)
+    role = getattr(usuario, 'role', 'admin') or 'admin'
+    token = create_token(usuario.username, usuario.nombre, role)
 
     return LoginResponse(
         token=token,
         usuario=usuario.username,
         nombre=usuario.nombre,
+        role=role,
         mensaje="Login exitoso"
     )
 
@@ -370,7 +428,8 @@ def verificar_token_endpoint(admin: dict = Depends(verificar_admin)):
     return {
         "valido": True,
         "usuario": admin.get("sub"),
-        "nombre": admin.get("nombre")
+        "nombre": admin.get("nombre"),
+        "role": admin.get("role", "admin")
     }
 
 
@@ -2223,10 +2282,11 @@ def exportar_carta_docx(
 
 CAMPOS_SIONO = {
     'acta_revisada', 'acta_remitida_ugpe',
-    'mod_presentado_ne', 'mod_revisado_aprobado',
-    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada',
+    'mod_presentado_ne', 'mod_revisado_aprobado', 'mod_remitido_ugpe',
+    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada', 'amp_remitido_ugpe',
     'dossier_presentado_ne', 'dossier_revisado_aprobado', 'dossier_remitido_ugpe', 'dossier_remitido_pago',
     'liq_presentado_ne', 'liq_revisado_aprobado', 'liq_remitido_pago',
+    'extra_1', 'extra_2', 'extra_3', 'extra_4', 'extra_5',
 }
 
 def _color(hex_color):
@@ -2466,10 +2526,74 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     )
 
 
+DEFAULT_COLS_CONFIG = [
+    {"campo":"acta_fecha_firma","label":"FECHA\nFIRMA ACTA","grupo":"ACTA DE CONFORMIDAD","badge":"1","css_grupo":"seg-th-acta","visible":True,"ancho":72,"tipo":"fecha","orden":0},
+    {"campo":"acta_revisada","label":"REVISADA Y\nAPROBADA","grupo":"ACTA DE CONFORMIDAD","badge":"1","css_grupo":"seg-th-acta","visible":True,"ancho":54,"tipo":"siono","orden":1},
+    {"campo":"acta_remitida_ugpe","label":"REMITIDA\nA UGPE","grupo":"ACTA DE CONFORMIDAD","badge":"1","css_grupo":"seg-th-acta","visible":True,"ancho":54,"tipo":"siono","orden":2},
+    {"campo":"mod_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. MODIFICACIÓN DE PARTIDAS","badge":"2","css_grupo":"seg-th-mod","visible":True,"ancho":54,"tipo":"siono","orden":3},
+    {"campo":"mod_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. MODIFICACIÓN DE PARTIDAS","badge":"2","css_grupo":"seg-th-mod","visible":True,"ancho":54,"tipo":"siono","orden":4},
+    {"campo":"mod_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. MODIFICACIÓN DE PARTIDAS","badge":"2","css_grupo":"seg-th-mod","visible":False,"ancho":54,"tipo":"siono","orden":5},
+    {"campo":"amp_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":6},
+    {"campo":"amp_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":7},
+    {"campo":"amp_adenda_firmada","label":"ADENDA\nFIRMADA","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":8},
+    {"campo":"amp_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":False,"ancho":54,"tipo":"siono","orden":9},
+    {"campo":"dossier_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":10},
+    {"campo":"dossier_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":11},
+    {"campo":"dossier_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":12},
+    {"campo":"dossier_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":13},
+    {"campo":"dossier_monto_pagado","label":"MONTO\nPAGADO (S/)","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":74,"tipo":"monto","orden":14},
+    {"campo":"liq_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":15},
+    {"campo":"liq_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":16},
+    {"campo":"liq_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":17},
+    {"campo":"extra_1","label":"EXTRA 1","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":18,"es_extra":True},
+    {"campo":"extra_2","label":"EXTRA 2","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":19,"es_extra":True},
+    {"campo":"extra_3","label":"EXTRA 3","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":20,"es_extra":True},
+    {"campo":"extra_4","label":"EXTRA 4","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":21,"es_extra":True},
+    {"campo":"extra_5","label":"EXTRA 5","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":22,"es_extra":True},
+]
+
+
+@app.get("/api/seguimiento/columnas-config")
+def get_columnas_config(db: Session = Depends(get_db)):
+    """Retorna la configuración de columnas de la tabla seguimiento."""
+    cfg = db.query(ConfiguracionSistema).filter(ConfiguracionSistema.clave == 'seguimiento_columnas_config').first()
+    if not cfg:
+        return DEFAULT_COLS_CONFIG
+    return json.loads(cfg.valor)
+
+
+@app.put("/api/seguimiento/columnas-config")
+def update_columnas_config(config: list = Body(...), db: Session = Depends(get_db), _: dict = Depends(verificar_superadmin)):
+    """Guarda la configuración de columnas. Solo superadmin."""
+    cfg = db.query(ConfiguracionSistema).filter(ConfiguracionSistema.clave == 'seguimiento_columnas_config').first()
+    if not cfg:
+        cfg = ConfiguracionSistema(clave='seguimiento_columnas_config', valor=json.dumps(config))
+        db.add(cfg)
+    else:
+        cfg.valor = json.dumps(config)
+    db.commit()
+    return {"ok": True}
+
+
+@app.put("/api/seguimiento/filas-orden")
+def update_filas_orden(orden: list = Body(...), db: Session = Depends(get_db), _: dict = Depends(verificar_superadmin)):
+    """Actualiza el orden de las filas. Solo superadmin."""
+    for item in orden:
+        db.query(SeguimientoComisaria).filter(
+            SeguimientoComisaria.id == item['id']
+        ).update({'orden_fila': item['orden_fila']})
+    db.commit()
+    return {"ok": True}
+
+
 @app.get("/api/seguimiento", response_model=List[SeguimientoComisariaResponse])
 def get_seguimiento(db: Session = Depends(get_db)):
-    """Retorna todas las filas de seguimiento. Público (sin autenticación)."""
-    return db.query(SeguimientoComisaria).order_by(SeguimientoComisaria.numero).all()
+    """Retorna todas las filas de seguimiento ordenadas por orden_fila."""
+    from sqlalchemy import case
+    return db.query(SeguimientoComisaria).order_by(
+        case((SeguimientoComisaria.orden_fila.is_(None), SeguimientoComisaria.numero),
+             else_=SeguimientoComisaria.orden_fila)
+    ).all()
 
 
 @app.put("/api/seguimiento/{comisaria_id}/celda")

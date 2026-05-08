@@ -139,6 +139,7 @@ class LoginResponse(BaseModel):
     token: str
     usuario: str
     nombre: str
+    role: str = "admin"
     mensaje: str = "Login exitoso"
 
 
@@ -417,6 +418,12 @@ class SeguimientoComisariaResponse(BaseModel):
     liq_revisado_aprobado: Optional[str] = None
     liq_remitido_pago: Optional[str] = None
     observaciones: Optional[str] = None
+    orden_fila: Optional[int] = None
+    extra_1: Optional[str] = None
+    extra_2: Optional[str] = None
+    extra_3: Optional[str] = None
+    extra_4: Optional[str] = None
+    extra_5: Optional[str] = None
     updated_at: Optional[datetime] = None
     detalles: List[SeguimientoCeldaDetalleResponse] = []
 

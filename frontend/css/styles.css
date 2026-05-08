@@ -487,12 +487,17 @@
 .seg-th-amp     { box-shadow: inset 0 3px 0 var(--s-accent); }
 .seg-th-dossier { box-shadow: inset 0 3px 0 var(--s-accent2); }
 .seg-th-liq     { box-shadow: inset 0 3px 0 var(--s-accent); }
+.seg-th-extra   { box-shadow: inset 0 3px 0 #7c3aed; }
 
 #tabla-seguimiento thead tr:last-child th.seg-th-acta    { border-top: 2px solid var(--s-accent);  }
 #tabla-seguimiento thead tr:last-child th.seg-th-mod     { border-top: 2px solid var(--s-accent2); }
 #tabla-seguimiento thead tr:last-child th.seg-th-amp     { border-top: 2px solid var(--s-accent);  }
 #tabla-seguimiento thead tr:last-child th.seg-th-dossier { border-top: 2px solid var(--s-accent2); }
 #tabla-seguimiento thead tr:last-child th.seg-th-liq     { border-top: 2px solid var(--s-accent);  }
+#tabla-seguimiento thead tr:last-child th.seg-th-extra   { border-top: 2px solid #7c3aed; }
+
+/* Drag & drop de filas (superadmin) */
+.seg-drag-over { outline: 2px solid #3b82f6; outline-offset: -2px; background: #eff6ff !important; }
 
 /* Badge numérico de sección */
 .seg-badge {

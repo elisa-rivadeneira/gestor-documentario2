@@ -31,6 +31,7 @@ function removeToken() {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_usuario');
     localStorage.removeItem('auth_nombre');
+    localStorage.removeItem('auth_role');
 }
 
 /**
@@ -125,9 +126,14 @@ async function apiLogin(username, password) {
         setToken(response.token);
         localStorage.setItem('auth_usuario', response.usuario);
         localStorage.setItem('auth_nombre', response.nombre);
+        localStorage.setItem('auth_role', response.role || 'admin');
     }
 
     return response;
+}
+
+function esSuperAdmin() {
+    return localStorage.getItem('auth_role') === 'superadmin';
 }
 
 /**

@@ -89,6 +89,7 @@ class Usuario(Base):
     password_hash = Column(String(255), nullable=False)
     nombre = Column(String(100), nullable=False)  # Nombre completo para mostrar
     activo = Column(Integer, default=1)  # 1 = activo, 0 = inactivo
+    role = Column(String(20), nullable=False, server_default='admin')  # 'admin' | 'superadmin'
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -280,6 +281,12 @@ class SeguimientoComisaria(Base):
     liq_remitido_pago = Column(String(5), nullable=True)
 
     observaciones = Column(Text, nullable=True)
+    orden_fila = Column(Integer, nullable=True)   # para drag & drop de filas
+    extra_1 = Column(String(100), nullable=True)  # columnas extra configurables
+    extra_2 = Column(String(100), nullable=True)
+    extra_3 = Column(String(100), nullable=True)
+    extra_4 = Column(String(100), nullable=True)
+    extra_5 = Column(String(100), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 

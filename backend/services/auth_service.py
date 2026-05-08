@@ -37,7 +37,7 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def create_token(username: str, nombre: str) -> str:
+def create_token(username: str, nombre: str, role: str = 'admin') -> str:
     """
     Crea un token JWT para el usuario.
     """
@@ -45,6 +45,7 @@ def create_token(username: str, nombre: str) -> str:
     payload = {
         "sub": username,
         "nombre": nombre,
+        "role": role,
         "exp": expiration,
         "iat": datetime.utcnow()
     }

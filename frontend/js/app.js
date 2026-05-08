@@ -3649,17 +3649,25 @@ const LABELS_CAMPO = {
 
 // Tipo de campo: 'siono' | 'texto' | 'fecha' | 'numero' | 'monto'
 function tipoCampo(campo) {
-    if (CAMPOS_SIONO.has(campo)) return 'siono';
+    const cfg = colsConfig.find(c => c.campo === campo);
+    if (cfg) return cfg.tipo || 'siono';
     if (campo === 'observaciones') return 'texto';
-    if (campo === 'fecha_fin_contractual' || campo === 'acta_fecha_firma') return 'fecha';
+    if (campo === 'fecha_fin_contractual') return 'fecha';
     if (campo === 'avance_fisico') return 'numero';
-    if (campo === 'dossier_monto_pagado') return 'monto';
     return 'siono';
 }
 
+function labelCampo(campo) {
+    const cfg = colsConfig.find(c => c.campo === campo);
+    if (cfg) return cfg.label.replace(/\n/g, ' ');
+    return LABELS_CAMPO[campo] || campo;
+}
+
 let seguimientoData = [];
+let colsConfig = [];
 let celdaEditando = null; // { comisariaId, campo, valorActual }
 let valorCeldaSeleccionado = null;
+let _dragEditorSrcIdx = null;
 
 async function descargarExcelSeguimiento() {
     try {
@@ -3687,21 +3695,90 @@ function copiarLinkSeguimiento() {
     });
 }
 
+async function cargarColsConfig() {
+    try {
+        const res = await fetch('/api/seguimiento/columnas-config');
+        colsConfig = await res.json();
+    } catch (e) {
+        colsConfig = [];
+    }
+}
+
+function buildThead() {
+    if (!colsConfig.length) return;
+    const visible = colsConfig.filter(c => c.visible).sort((a, b) => a.orden - b.orden);
+
+    const grupos = [];
+    const grupoMap = {};
+    for (const col of visible) {
+        if (!grupoMap[col.grupo]) {
+            grupoMap[col.grupo] = { nombre: col.grupo, badge: col.badge, css: col.css_grupo, cols: [] };
+            grupos.push(grupoMap[col.grupo]);
+        }
+        grupoMap[col.grupo].cols.push(col);
+    }
+
+    const GRUPO_INFO = {
+        'ACTA DE CONFORMIDAD':            { label: 'ACTA DE CONFORMIDAD',                  sub: 'Ejecución y recepción física' },
+        'INF. MODIFICACIÓN DE PARTIDAS':  { label: 'INF. MODIFICACIÓN DE PARTIDAS',        sub: 'UGPE' },
+        'INF. AMPLIACIÓN DE PLAZO':       { label: 'INF. AMPLIACIÓN DE PLAZO',             sub: '&nbsp;' },
+        'INF. CULMINACIÓN Y ENTREGA':     { label: 'INF. CULMINACIÓN Y ENTREGA DE OBRA',   sub: 'Dossier' },
+        'INF. LIQUIDACIÓN FINAL':         { label: 'INF. LIQUIDACIÓN FINAL',               sub: '&nbsp;' },
+        'COLUMNAS EXTRA':                 { label: 'COLUMNAS EXTRA',                       sub: '' },
+    };
+
+    let tr1 = `<tr class="text-center">
+        <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[32px]">N°</th>
+        <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[145px] text-left">COMISARÍA PNP</th>
+        <th colspan="2" class="seg-th-main px-2 py-1">AVANCE</th>
+        <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[78px]">FECHA FIN<br>CONTRACTUAL</th>`;
+
+    for (const g of grupos) {
+        const info = GRUPO_INFO[g.nombre] || { label: g.nombre, sub: '&nbsp;' };
+        const badge = g.badge ? `<span class="seg-badge seg-badge-${g.badge}">${g.badge}</span>` : '';
+        tr1 += `<th colspan="${g.cols.length}" class="${g.css} px-3 py-2 text-left">${badge}${info.label}<div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">${info.sub}</div></th>`;
+    }
+
+    tr1 += `<th rowspan="2" class="seg-th-main px-2 py-2 min-w-[110px]">OBSERVACIONES</th>
+        <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[80px]">ACTUALIZADO</th>
+    </tr>`;
+
+    let tr2 = `<tr class="text-center">
+        <th class="seg-th-main min-w-[46px]">PROG.</th>
+        <th class="seg-th-main min-w-[52px]">FÍSICO</th>`;
+
+    for (const col of visible) {
+        const label = col.label.replace(/\n/g, '<br>');
+        const minW = col.ancho ? `min-width:${col.ancho}px` : '';
+        tr2 += `<th class="${col.css_grupo}" style="${minW}">${label}</th>`;
+    }
+
+    tr2 += '</tr>';
+
+    const thead = document.getElementById('thead-seguimiento');
+    if (thead) thead.innerHTML = tr1 + tr2;
+}
+
 async function cargarSeguimiento() {
     const tbody = document.getElementById('tbody-seguimiento');
-    tbody.innerHTML = '<tr><td colspan="23" class="text-center py-6 text-gray-400">Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="30" class="text-center py-6 text-gray-400">Cargando...</td></tr>';
     const aviso = document.getElementById('seg-aviso-readonly');
     if (estaAutenticado()) {
         aviso.classList.add('hidden');
     } else {
         aviso.classList.remove('hidden');
     }
+    const btnEditor = document.getElementById('btn-editor-columnas');
+    if (btnEditor) btnEditor.style.display = esSuperAdmin() ? 'flex' : 'none';
+
     try {
+        if (!colsConfig.length) await cargarColsConfig();
+        buildThead();
         const res = await fetch('/api/seguimiento');
         seguimientoData = await res.json();
         renderizarSeguimiento();
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="23" class="text-center py-6 text-red-500">Error al cargar datos</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="30" class="text-center py-6 text-red-500">Error al cargar datos</td></tr>';
     }
 }
 
@@ -3709,7 +3786,7 @@ function renderizarSeguimiento() {
     const tbody = document.getElementById('tbody-seguimiento');
     const editable = estaAutenticado();
     if (!seguimientoData.length) {
-        tbody.innerHTML = '<tr><td colspan="23" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="30" class="text-center py-10 text-gray-400">Sin datos registrados</td></tr>';
         return;
     }
 
@@ -3777,13 +3854,7 @@ function renderizarSeguimiento() {
             </div>`).join('');
     }
 
-    const camposSiNo = [
-        'acta_revisada','acta_remitida_ugpe',
-        'mod_presentado_ne','mod_revisado_aprobado',
-        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
-        'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
-        'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
-    ];
+    const visibleCols = colsConfig.filter(c => c.visible).sort((a, b) => a.orden - b.orden);
 
     const ICONOS = {
         'SI':  '<span style="font-size:1rem">✓</span>',
@@ -3843,61 +3914,63 @@ function renderizarSeguimiento() {
         return { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit };
     });
 
-    const AMP_CAMPOS = ['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada'];
-    const AMP_CAMPOS_SET = new Set(AMP_CAMPOS);
+    const AMP_SET = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
 
     let html = '';
     let skipMontoIdx = -1;
     let skipAmpIdx = -1;
     for (let i = 0; i < rowData.length; i++) {
-        const { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit } = rowData[i];
+        const { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, updatedAt, tdEdit } = rowData[i];
 
         let celdasHtml = '';
-        for (const campo of camposSiNo) {
-            if (AMP_CAMPOS_SET.has(campo)) {
-                if (skipAmpIdx === i) {
-                    // celda absorbida por rowspan de la fila anterior — no renderizar
-                } else {
+        for (const col of visibleCols) {
+            const campo = col.campo;
+            const tipo = col.tipo || 'siono';
+
+            if (tipo === 'fecha') {
+                const val = row[campo] ? row[campo].substring(0, 10) : '';
+                celdasHtml += tdEdit(campo, val ? `<span class="font-medium">${val}</span>` : '', 'text-center');
+                continue;
+            }
+
+            if (campo === 'dossier_monto_pagado') {
+                if (skipMontoIdx !== i) {
+                    const montoVal = row.dossier_monto_pagado;
+                    const montoDisplay = montoVal != null
+                        ? `<span class="font-semibold text-emerald-700">S/ ${montoVal.toLocaleString('es-PE',{minimumFractionDigits:2})}</span>`
+                        : '<span class="text-gray-300 text-[10px]">—</span>';
+                    const rowspanAttr = row.dossier_monto_merge ? ' rowspan="2"' : '';
+                    if (row.dossier_monto_merge && i + 1 < rowData.length) skipMontoIdx = i + 1;
+                    const nomEsc = row.comisaria.replace(/'/g, "\\'");
+                    const montoEsc = montoVal != null ? String(montoVal) : '';
+                    if (editable) {
+                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs cursor-pointer hover:bg-amber-50 group relative" onclick="abrirModalCelda(${row.id},'dossier_monto_pagado','${montoEsc}','${nomEsc}')">${montoDisplay}<span class="absolute top-0.5 right-0.5 text-gray-300 group-hover:text-blue-400 text-[8px]">✎</span></td>`;
+                    } else {
+                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs">${montoDisplay}</td>`;
+                    }
+                }
+                continue;
+            }
+
+            if (AMP_SET.has(campo)) {
+                if (skipAmpIdx !== i) {
                     const rowspanAttr = row.amp_merge ? ' rowspan="2"' : '';
                     if (row.amp_merge && i + 1 < rowData.length) skipAmpIdx = i + 1;
                     celdasHtml += celdaSiNo(row, campo, editable, rowspanAttr);
                 }
                 continue;
             }
+
             celdasHtml += celdaSiNo(row, campo, editable);
-            if (campo === 'dossier_remitido_pago') {
-                if (skipMontoIdx === i) {
-                    // celda absorbida por rowspan de la fila anterior — no renderizar
-                } else {
-                    const montoVal = row.dossier_monto_pagado;
-                    const montoDisplay = montoVal != null
-                        ? `<span class="font-semibold text-emerald-700">S/ ${montoVal.toLocaleString('es-PE',{minimumFractionDigits:2})}</span>`
-                        : '<span class="text-gray-300 text-[10px]">—</span>';
-                    const rowspanAttr = row.dossier_monto_merge ? ' rowspan="2"' : '';
-                    if (row.dossier_monto_merge && i + 1 < rowData.length) {
-                        skipMontoIdx = i + 1;
-                    }
-                    const nomEsc = row.comisaria.replace(/'/g, "\\'");
-                    const montoEsc = montoVal != null ? String(montoVal) : '';
-                    if (editable) {
-                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs cursor-pointer hover:bg-amber-50 group relative" onclick="abrirModalCelda(${row.id},'dossier_monto_pagado','${montoEsc}','${nomEsc}')">
-                            ${montoDisplay}
-                            <span class="absolute top-0.5 right-0.5 text-gray-300 group-hover:text-blue-400 text-[8px]">✎</span>
-                        </td>`;
-                    } else {
-                        celdasHtml += `<td${rowspanAttr} class="border border-gray-200 px-2 py-1.5 text-right text-xs">${montoDisplay}</td>`;
-                    }
-                }
-            }
         }
 
-        html += `<tr class="${bg} text-xs hover:brightness-95 transition-all">
-            <td class="border border-gray-200 px-1 py-1.5 text-center font-bold text-gray-500">${row.numero}</td>
+        const grabCls = esSuperAdmin() ? 'cursor-grab select-none' : '';
+        html += `<tr class="${bg} text-xs hover:brightness-95 transition-all" data-id="${row.id}">
+            <td class="border border-gray-200 px-1 py-1.5 text-center font-bold text-gray-500 ${grabCls}">${row.numero}</td>
             <td class="border border-gray-200 px-2 py-1.5 font-semibold text-gray-800">${row.comisaria}</td>
             <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-500">${avanceProg}</td>
             ${tdEdit('avance_fisico', avanceFisHtml, 'text-center')}
             ${tdEdit('fecha_fin_contractual', fechaFin ? `<span class="font-medium">${fechaFin}</span>` : '', 'text-center')}
-            ${tdEdit('acta_fecha_firma', fechaFirma ? `<span class="font-medium">${fechaFirma}</span>` : '', 'text-center')}
             ${celdasHtml}
             ${tdEdit('observaciones', row.observaciones ? `<span class="text-gray-600">${row.observaciones}</span>` : '', 'text-left')}
             <td class="border border-gray-200 px-1 py-1.5 text-center text-gray-400 text-[10px] leading-tight">${updatedAt}</td>
@@ -3905,18 +3978,32 @@ function renderizarSeguimiento() {
     }
     tbody.innerHTML = html;
 
-    // Fila de total en tfoot
+    if (esSuperAdmin()) enableRowDrag();
+
+    // Fila de total en tfoot — colspan dinámico
     const totalMonto = seguimientoData.reduce((sum, r) => sum + (r.dossier_monto_pagado ?? 0), 0);
     const totalFmt = totalMonto > 0
         ? totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         : '—';
     const tfoot = document.getElementById('tfoot-seguimiento');
     if (tfoot) {
-        tfoot.innerHTML = `<tr class="bg-emerald-50 border-t-2 border-emerald-300 text-xs font-bold">
-            <td colspan="18" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado</td>
-            <td class="px-2 py-2 text-right text-emerald-700 text-sm whitespace-nowrap">S/ ${totalFmt}</td>
-            <td colspan="5" class="px-2 py-2"></td>
-        </tr>`;
+        const montoIdx = visibleCols.findIndex(c => c.campo === 'dossier_monto_pagado');
+        const FIXED_LEADING = 5; // N°, COMISARÍA, PROG, FÍSICO, FECHA FIN
+        const FIXED_TRAILING = 2; // OBSERVACIONES, ACTUALIZADO
+        if (montoIdx >= 0) {
+            const before = FIXED_LEADING + montoIdx;
+            const after = (visibleCols.length - montoIdx - 1) + FIXED_TRAILING;
+            tfoot.innerHTML = `<tr class="bg-emerald-50 border-t-2 border-emerald-300 text-xs font-bold">
+                <td colspan="${before}" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado</td>
+                <td class="px-2 py-2 text-right text-emerald-700 text-sm whitespace-nowrap">S/ ${totalFmt}</td>
+                ${after > 0 ? `<td colspan="${after}" class="px-2 py-2"></td>` : ''}
+            </tr>`;
+        } else {
+            const total = FIXED_LEADING + visibleCols.length + FIXED_TRAILING;
+            tfoot.innerHTML = `<tr class="bg-emerald-50 border-t-2 border-emerald-300 text-xs font-bold">
+                <td colspan="${total}" class="px-3 py-2 text-right text-gray-600 tracking-wide uppercase text-[10px]">Total Monto Pagado: <span class="text-emerald-700 text-sm ml-2">${totalFmt !== '—' ? 'S/ ' + totalFmt : '—'}</span></td>
+            </tr>`;
+        }
     }
 }
 
@@ -3925,7 +4012,7 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     celdaEditando = { comisariaId, campo, valorActual, tipo };
     valorCeldaSeleccionado = tipo === 'siono' ? (valorActual || null) : valorActual;
 
-    document.getElementById('modal-celda-titulo').textContent = LABELS_CAMPO[campo] || campo;
+    document.getElementById('modal-celda-titulo').textContent = labelCampo(campo);
     document.getElementById('modal-celda-subtitulo').textContent = nombreComisaria;
     document.getElementById('modal-celda-obs').value = '';
     document.getElementById('modal-celda-enlace').value = '';
@@ -4002,7 +4089,7 @@ function cerrarModalCelda() {
 function seleccionarValorCelda(val) {
     valorCeldaSeleccionado = val;
     resaltarBotonValor(val);
-    const extraVisible = val === 'SI' && CAMPOS_SIONO.has(celdaEditando?.campo);
+    const extraVisible = val === 'SI' && tipoCampo(celdaEditando?.campo) === 'siono';
     document.getElementById('modal-celda-detalle-extra').classList.toggle('hidden', !extraVisible);
 }
 
@@ -4091,6 +4178,177 @@ async function guardarCelda() {
     } finally {
         btn.disabled = false;
     }
+}
+
+// ============================================
+// SUPERADMIN — EDITOR DE COLUMNAS
+// ============================================
+
+let _colsConfigBackup = [];
+
+function abrirEditorColumnas() {
+    _colsConfigBackup = JSON.parse(JSON.stringify(colsConfig));
+    document.getElementById('col-editor-overlay').style.display = 'block';
+    document.getElementById('col-editor-panel').style.display = 'flex';
+    renderEditorList();
+}
+
+function cerrarEditorColumnas() {
+    colsConfig = JSON.parse(JSON.stringify(_colsConfigBackup));
+    document.getElementById('col-editor-overlay').style.display = 'none';
+    document.getElementById('col-editor-panel').style.display = 'none';
+}
+
+function renderEditorList() {
+    const list = document.getElementById('col-editor-list');
+    const cols = [...colsConfig].sort((a, b) => a.orden - b.orden);
+    list.innerHTML = cols.map((col, listIdx) => {
+        const realIdx = colsConfig.findIndex(c => c.campo === col.campo);
+        const labelStr = col.label.replace(/\n/g, ' ');
+        const grupoShort = col.grupo.length > 20 ? col.grupo.substring(0, 18) + '…' : col.grupo;
+        const checkedAttr = col.visible ? 'checked' : '';
+        const extraInput = col.es_extra
+            ? `<input type="text" value="${labelStr}" placeholder="Nombre columna"
+                style="width:100%;margin-top:4px;font-size:0.72rem;border:1px solid #e2e8f0;border-radius:4px;padding:2px 6px;"
+                onchange="colsConfig[${realIdx}].label = this.value">`
+            : '';
+        return `<div style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;user-select:none;"
+                     draggable="true" data-campo="${col.campo}" data-listidx="${listIdx}">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:#cbd5e1;cursor:grab;font-size:1rem;line-height:1;">⠿</span>
+                <input type="checkbox" id="vis_${col.campo}" ${checkedAttr}
+                    style="flex-shrink:0;cursor:pointer;"
+                    onchange="colsConfig[${realIdx}].visible = this.checked">
+                <label for="vis_${col.campo}"
+                    style="flex:1;font-size:0.72rem;color:#374151;cursor:pointer;line-height:1.3;min-width:0;">
+                    <span style="font-weight:600;">${labelStr}</span>
+                    <span style="color:#94a3b8;font-size:0.65rem;"> · ${grupoShort}</span>
+                </label>
+                <input type="number" value="${col.ancho || 54}" min="30" max="400"
+                    style="width:52px;font-size:0.72rem;border:1px solid #e2e8f0;border-radius:4px;padding:2px 4px;text-align:center;flex-shrink:0;"
+                    title="Ancho (px)"
+                    onchange="colsConfig[${realIdx}].ancho = parseInt(this.value) || 54">
+            </div>
+            ${extraInput}
+        </div>`;
+    }).join('');
+    _initEditorDrag();
+}
+
+function _initEditorDrag() {
+    const list = document.getElementById('col-editor-list');
+    const items = list.querySelectorAll('[draggable]');
+    items.forEach(el => {
+        el.addEventListener('dragstart', e => {
+            _dragEditorSrcIdx = parseInt(el.dataset.listidx);
+            e.dataTransfer.effectAllowed = 'move';
+            el.style.opacity = '0.45';
+        });
+        el.addEventListener('dragend', () => {
+            el.style.opacity = '';
+            list.querySelectorAll('[draggable]').forEach(i => i.style.outline = '');
+        });
+        el.addEventListener('dragover', e => {
+            e.preventDefault();
+            list.querySelectorAll('[draggable]').forEach(i => i.style.outline = '');
+            el.style.outline = '2px solid #3b82f6';
+        });
+        el.addEventListener('drop', e => {
+            e.preventDefault();
+            el.style.outline = '';
+            const tgtIdx = parseInt(el.dataset.listidx);
+            if (_dragEditorSrcIdx === null || _dragEditorSrcIdx === tgtIdx) return;
+            // Reorder colsConfig by the sorted-list indices
+            const sorted = [...colsConfig].sort((a, b) => a.orden - b.orden);
+            const [moved] = sorted.splice(_dragEditorSrcIdx, 1);
+            sorted.splice(tgtIdx, 0, moved);
+            sorted.forEach((c, i) => { c.orden = i; });
+            colsConfig = sorted;
+            _dragEditorSrcIdx = null;
+            renderEditorList();
+        });
+    });
+}
+
+async function guardarConfigColumnas() {
+    const btn = document.getElementById('btn-guardar-cols');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+    try {
+        const res = await fetch('/api/seguimiento/columnas-config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+            body: JSON.stringify(colsConfig)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        _colsConfigBackup = JSON.parse(JSON.stringify(colsConfig));
+        document.getElementById('col-editor-overlay').style.display = 'none';
+        document.getElementById('col-editor-panel').style.display = 'none';
+        buildThead();
+        renderizarSeguimiento();
+        mostrarToast('Configuración guardada');
+    } catch (e) {
+        mostrarToast('Error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+    }
+}
+
+// ============================================
+// SUPERADMIN — DRAG & DROP DE FILAS
+// ============================================
+
+let _dragRowId = null;
+
+function enableRowDrag() {
+    const tbody = document.getElementById('tbody-seguimiento');
+    if (!tbody) return;
+    tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+        tr.draggable = true;
+        tr.addEventListener('dragstart', () => {
+            _dragRowId = parseInt(tr.dataset.id);
+            tr.style.opacity = '0.5';
+        });
+        tr.addEventListener('dragend', () => {
+            tr.style.opacity = '';
+            tbody.querySelectorAll('tr').forEach(r => r.classList.remove('seg-drag-over'));
+        });
+        tr.addEventListener('dragover', e => {
+            e.preventDefault();
+            tbody.querySelectorAll('tr').forEach(r => r.classList.remove('seg-drag-over'));
+            tr.classList.add('seg-drag-over');
+        });
+        tr.addEventListener('drop', async e => {
+            e.preventDefault();
+            tr.classList.remove('seg-drag-over');
+            const targetId = parseInt(tr.dataset.id);
+            if (!_dragRowId || _dragRowId === targetId) return;
+
+            const srcIdx = seguimientoData.findIndex(r => r.id === _dragRowId);
+            const tgtIdx = seguimientoData.findIndex(r => r.id === targetId);
+            if (srcIdx === -1 || tgtIdx === -1) return;
+
+            const [moved] = seguimientoData.splice(srcIdx, 1);
+            seguimientoData.splice(tgtIdx, 0, moved);
+            const orden = seguimientoData.map((r, i) => ({ id: r.id, orden_fila: i + 1 }));
+
+            renderizarSeguimiento();
+            enableRowDrag();
+
+            try {
+                const res = await fetch('/api/seguimiento/filas-orden', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+                    body: JSON.stringify(orden)
+                });
+                if (!res.ok) throw new Error('Error al guardar orden');
+                mostrarToast('Orden guardado');
+            } catch (err) {
+                mostrarToast('Error: ' + err.message, 'error');
+            }
+        });
+    });
 }
 
 // ============================================

@@ -1623,14 +1623,24 @@
             <!-- Cabecera simple -->
             <div class="seg-banner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
                 <h2 class="seg-banner-h2">Seguimiento al Proceso de Liquidación</h2>
-                <button onclick="descargarExcelSeguimiento()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                    style="background:#1a7a3c;color:#fff;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.18);"
-                    onmouseover="this.style.background='#145f2e'" onmouseout="this.style.background='#1a7a3c'">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
-                    </svg>
-                    Descargar Excel
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="btn-editor-columnas" onclick="abrirEditorColumnas()"
+                        style="display:none;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:0.875rem;font-weight:600;background:#334155;color:#fff;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#334155'">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Columnas
+                    </button>
+                    <button onclick="descargarExcelSeguimiento()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                        style="background:#1a7a3c;color:#fff;border:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.18);"
+                        onmouseover="this.style.background='#145f2e'" onmouseout="this.style.background='#1a7a3c'">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                        Descargar Excel
+                    </button>
+                </div>
             </div>
 
             <!-- Resumen de totales -->
@@ -1647,61 +1657,40 @@
             <!-- Tabla -->
             <div class="overflow-x-auto seg-table-wrap">
                 <table id="tabla-seguimiento" class="border-collapse w-full" style="min-width:1640px">
-                    <thead>
-                        <tr class="text-center">
-                            <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[32px]">N°</th>
-                            <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[145px] text-left">COMISARÍA PNP</th>
-                            <th colspan="2" class="seg-th-main px-2 py-1">AVANCE</th>
-                            <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[78px]">FECHA FIN<br>CONTRACTUAL</th>
-                            <th colspan="3" class="seg-th-acta px-3 py-2 text-left">
-                                <span class="seg-badge seg-badge-1">1</span>ACTA DE CONFORMIDAD
-                                <div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">Ejecución y recepción física</div>
-                            </th>
-                            <th colspan="2" class="seg-th-mod px-3 py-2 text-left">
-                                <span class="seg-badge seg-badge-2">2</span>INF. MODIFICACIÓN DE PARTIDAS
-                                <div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">UGPE</div>
-                            </th>
-                            <th colspan="3" class="seg-th-amp px-3 py-2 text-left">
-                                <span class="seg-badge seg-badge-3">3</span>INF. AMPLIACIÓN DE PLAZO
-                                <div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">&nbsp;</div>
-                            </th>
-                            <th colspan="5" class="seg-th-dossier px-3 py-2 text-left">
-                                <span class="seg-badge seg-badge-4">4</span>INF. CULMINACIÓN Y ENTREGA DE OBRA
-                                <div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">Dossier</div>
-                            </th>
-                            <th colspan="3" class="seg-th-liq px-3 py-2 text-left">
-                                <span class="seg-badge seg-badge-5">5</span>INF. LIQUIDACIÓN FINAL
-                                <div style="font-size:0.58rem;opacity:0.65;font-weight:400;margin-top:1px">&nbsp;</div>
-                            </th>
-                            <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[110px]">OBSERVACIONES</th>
-                            <th rowspan="2" class="seg-th-main px-2 py-2 min-w-[80px]">ACTUALIZADO</th>
-                        </tr>
-                        <tr class="text-center">
-                            <th class="seg-th-main min-w-[46px]">PROG.</th>
-                            <th class="seg-th-main min-w-[52px]">FÍSICO</th>
-                            <th class="seg-th-acta min-w-[72px]">FECHA<br>FIRMA ACTA</th>
-                            <th class="seg-th-acta min-w-[54px]">REVISADA Y<br>APROBADA</th>
-                            <th class="seg-th-acta min-w-[54px]">REMITIDA<br>A UGPE</th>
-                            <th class="seg-th-mod min-w-[54px]">PRESENTADO<br>AL NE</th>
-                            <th class="seg-th-mod min-w-[54px]">REVISADO Y<br>APROBADO</th>
-                            <th class="seg-th-amp min-w-[54px]">PRESENTADO<br>AL NE</th>
-                            <th class="seg-th-amp min-w-[54px]">REVISADO Y<br>APROBADO</th>
-                            <th class="seg-th-amp min-w-[54px]">ADENDA<br>FIRMADA</th>
-                            <th class="seg-th-dossier min-w-[54px]">PRESENTADO<br>AL NE</th>
-                            <th class="seg-th-dossier min-w-[54px]">REVISADO Y<br>APROBADO</th>
-                            <th class="seg-th-dossier min-w-[54px]">REMITIDO<br>A UGPE</th>
-                            <th class="seg-th-dossier min-w-[54px]">REMITIDO<br>PARA PAGO</th>
-                            <th class="seg-th-dossier min-w-[74px]">MONTO<br>PAGADO (S/)</th>
-                            <th class="seg-th-liq min-w-[54px]">PRESENTADO<br>AL NE</th>
-                            <th class="seg-th-liq min-w-[54px]">REVISADO Y<br>APROBADO</th>
-                            <th class="seg-th-liq min-w-[54px]">REMITIDO<br>PARA PAGO</th>
-                        </tr>
-                    </thead>
+                    <thead id="thead-seguimiento"></thead>
                     <tbody id="tbody-seguimiento">
-                        <tr><td colspan="23" class="text-center py-8 text-gray-400">Cargando...</td></tr>
+                        <tr><td colspan="30" class="text-center py-8 text-gray-400">Cargando...</td></tr>
                     </tbody>
                     <tfoot id="tfoot-seguimiento"></tfoot>
                 </table>
+            </div>
+        </div>
+
+        <!-- Panel editor columnas (solo superadmin) -->
+        <div id="col-editor-overlay" onclick="cerrarEditorColumnas()"
+             style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:40;"></div>
+        <div id="col-editor-panel"
+             style="display:none;position:fixed;top:0;right:0;bottom:0;width:320px;background:#fff;box-shadow:-4px 0 30px rgba(0,0,0,0.15);z-index:50;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e5e7eb;background:#f8fafc;">
+                <span style="font-weight:700;font-size:0.95rem;color:#1e293b;">⚙ Configurar Columnas</span>
+                <button onclick="cerrarEditorColumnas()"
+                    style="color:#94a3b8;font-size:1.4rem;line-height:1;background:none;border:none;cursor:pointer;padding:0 4px;">&times;</button>
+            </div>
+            <p style="padding:10px 14px 4px;font-size:0.7rem;color:#64748b;">
+                Arrastra ⠿ para reordenar. Marca ✓ para mostrar. Ajusta el ancho (px).
+            </p>
+            <div id="col-editor-list"
+                 style="flex:1;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px;">
+            </div>
+            <div style="padding:12px 14px;border-top:1px solid #e5e7eb;background:#f8fafc;display:flex;gap:8px;">
+                <button onclick="guardarConfigColumnas()" id="btn-guardar-cols"
+                    style="flex:1;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+                    Guardar
+                </button>
+                <button onclick="cerrarEditorColumnas()"
+                    style="flex:1;background:#e2e8f0;color:#374151;border:none;border-radius:8px;padding:9px;font-size:0.85rem;cursor:pointer;">
+                    Cancelar
+                </button>
             </div>
         </div>
 
