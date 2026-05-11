@@ -3620,7 +3620,7 @@ async function exportarCartaDocx() {
 const CAMPOS_SIONO = new Set([
     'acta_revisada','acta_remitida_ugpe',
     'mod_presentado_ne','mod_revisado_aprobado',
-    'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
+    'amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada',
     'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
     'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
 ]);
@@ -3632,6 +3632,7 @@ const LABELS_CAMPO = {
     mod_revisado_aprobado: 'Mod. Partidas: Revisado y aprobado',
     amp_presentado_ne: 'Amp. Plazo: Presentado al NE',
     amp_revisado_aprobado: 'Amp. Plazo: Revisado y aprobado',
+    amp_opinion_legal: 'Amp. Plazo: A/P con opinión legal',
     amp_adenda_firmada: 'Amp. Plazo: Adenda firmada',
     dossier_presentado_ne: 'Dossier: Presentado al NE',
     dossier_revisado_aprobado: 'Dossier: Revisado y aprobado',
@@ -3914,7 +3915,7 @@ function renderizarSeguimiento() {
         return { row, idx, bg, avanceProg, avanceFisHtml, fechaFin, fechaFirma, updatedAt, tdEdit };
     });
 
-    const AMP_SET = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
+    const AMP_SET = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada']);
 
     let html = '';
     let skipMontoIdx = -1;
@@ -4031,7 +4032,7 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     inputPrefix.classList.add('hidden');
     inputEl.classList.remove('pl-8');
 
-    const AMP_CAMPOS_MODAL = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
+    const AMP_CAMPOS_MODAL = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada']);
 
     if (tipo === 'siono') {
         sinoSection.classList.remove('hidden');
@@ -4148,7 +4149,7 @@ async function guardarCelda() {
             });
         }
         // Para ampliación de plazo, guardar el estado de combinación de celdas
-        const AMP_CAMPOS_SAVE = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada']);
+        const AMP_CAMPOS_SAVE = new Set(['amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada']);
         if (AMP_CAMPOS_SAVE.has(campo)) {
             const mergeVal = document.getElementById('modal-merge-check').checked ? 'true' : 'false';
             await fetch(`/api/seguimiento/${comisariaId}/celda`, {

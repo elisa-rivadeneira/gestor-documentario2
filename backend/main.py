@@ -193,6 +193,7 @@ def migrar_seguimiento():
                 ('dossier_monto_merge', 'INTEGER NOT NULL DEFAULT 0'),
                 ('amp_merge',           'INTEGER NOT NULL DEFAULT 0'),
                 ('amp_remitido_ugpe',   'TEXT'),
+                ('amp_opinion_legal',   'TEXT'),
                 ('orden_fila',          'INTEGER'),
                 ('extra_1',             'TEXT'),
                 ('extra_2',             'TEXT'),
@@ -211,6 +212,45 @@ def migrar_seguimiento():
         print(f"Error en migración seguimiento: {e}")
 
 migrar_seguimiento()
+
+def migrar_columnas_config_db():
+    """Inserta amp_opinion_legal justo después de amp_revisado_aprobado en la config guardada en BD."""
+    from sqlalchemy.orm import sessionmaker
+    SessionLocal2 = sessionmaker(bind=engine)
+    db = SessionLocal2()
+    try:
+        cfg = db.query(ConfiguracionSistema).filter(ConfiguracionSistema.clave == 'seguimiento_columnas_config').first()
+        if not cfg:
+            return
+        cols = json.loads(cfg.valor)
+        campos = [c['campo'] for c in cols]
+        # Verificar si ya está en la posición correcta
+        if 'amp_opinion_legal' in campos:
+            idx_rev = campos.index('amp_revisado_aprobado') if 'amp_revisado_aprobado' in campos else -1
+            idx_op = campos.index('amp_opinion_legal')
+            if idx_rev >= 0 and idx_op == idx_rev + 1:
+                return  # ya en posición correcta
+            # Posición incorrecta: remover para reinsertar
+            cols = [c for c in cols if c['campo'] != 'amp_opinion_legal']
+        new_col = {"campo":"amp_opinion_legal","label":"A/P CON\nOPINIÓN LEGAL","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono"}
+        for i, col in enumerate(cols):
+            if col['campo'] == 'amp_revisado_aprobado':
+                cols.insert(i + 1, new_col)
+                break
+        else:
+            cols.append(new_col)
+        # Renumerar por posición en lista (no por sort alfabético)
+        for idx, col in enumerate(cols):
+            col['orden'] = idx
+        cfg.valor = json.dumps(cols)
+        db.commit()
+        print("Migración: amp_opinion_legal insertado en posición correcta en seguimiento_columnas_config")
+    except Exception as e:
+        print(f"Error en migración columnas_config: {e}")
+    finally:
+        db.close()
+
+migrar_columnas_config_db()
 
 def migrar_usuarios():
     """Agrega columna role a usuarios si no existe."""
@@ -2283,7 +2323,7 @@ def exportar_carta_docx(
 CAMPOS_SIONO = {
     'acta_revisada', 'acta_remitida_ugpe',
     'mod_presentado_ne', 'mod_revisado_aprobado', 'mod_remitido_ugpe',
-    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_adenda_firmada', 'amp_remitido_ugpe',
+    'amp_presentado_ne', 'amp_revisado_aprobado', 'amp_opinion_legal', 'amp_adenda_firmada', 'amp_remitido_ugpe',
     'dossier_presentado_ne', 'dossier_revisado_aprobado', 'dossier_remitido_ugpe', 'dossier_remitido_pago',
     'liq_presentado_ne', 'liq_revisado_aprobado', 'liq_remitido_pago',
     'extra_1', 'extra_2', 'extra_3', 'extra_4', 'extra_5',
@@ -2354,10 +2394,10 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("E2","E3","FECHA FINAL\nEJECUCIÓN CONTRACTUAL", C_TITLE),
         ("F2","H2","1. ACTA DE CONFORMIDAD\nDE EJECUCIÓN Y RECEPCIÓN FÍSICA", C_GRP),
         ("I2","J2","2. INFORME DE MODIFICACIÓN\nDE PARTIDAS (UGPE)", C_GRP),
-        ("K2","M2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
-        ("N2","R2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
-        ("S2","U2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
-        ("V2","V3","OBSERVACIONES", C_TITLE),
+        ("K2","N2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
+        ("O2","S2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
+        ("T2","V2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
+        ("W2","W3","OBSERVACIONES", C_TITLE),
     ]
     for start, end, label, color in grupos:
         if start != end:
@@ -2374,7 +2414,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.merge_cells("A2:A3")
     ws.merge_cells("B2:B3")
     ws.merge_cells("E2:E3")
-    ws.merge_cells("V2:V3")
+    ws.merge_cells("W2:W3")
 
     sub_hdrs = [
         ("C3", "PROGRAMADO"),
@@ -2386,15 +2426,16 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("J3", "REVISADO Y\nAPROBADO"),
         ("K3", "PRESENTADO\nAL NE"),
         ("L3", "REVISADO Y\nAPROBADO"),
-        ("M3", "ADENDA\nFIRMADA"),
-        ("N3", "PRESENTADO\nAL NE"),
-        ("O3", "REVISADO Y\nAPROBADO"),
-        ("P3", "REMITIDO\nA UGPE"),
-        ("Q3", "REMITIDO\nPARA PAGO"),
-        ("R3", "MONTO\nPAGADO (S/)"),
-        ("S3", "PRESENTADO\nAL NE"),
-        ("T3", "REVISADO Y\nAPROBADO"),
-        ("U3", "REMITIDO\nPARA PAGO"),
+        ("M3", "A/P CON\nOPINIÓN LEGAL"),
+        ("N3", "ADENDA\nFIRMADA"),
+        ("O3", "PRESENTADO\nAL NE"),
+        ("P3", "REVISADO Y\nAPROBADO"),
+        ("Q3", "REMITIDO\nA UGPE"),
+        ("R3", "REMITIDO\nPARA PAGO"),
+        ("S3", "MONTO\nPAGADO (S/)"),
+        ("T3", "PRESENTADO\nAL NE"),
+        ("U3", "REVISADO Y\nAPROBADO"),
+        ("V3", "REMITIDO\nPARA PAGO"),
     ]
     for cell_ref, label in sub_hdrs:
         c = ws[cell_ref]
@@ -2409,14 +2450,14 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     campos_siono = [
         'acta_revisada','acta_remitida_ugpe',
         'mod_presentado_ne','mod_revisado_aprobado',
-        'amp_presentado_ne','amp_revisado_aprobado','amp_adenda_firmada',
+        'amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada',
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
         'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
     ]
-    # G(7)..Q(17) + saltar R(18)=monto → S(19)..U(21)
+    # G(7)..R(18) + saltar S(19)=monto → T(20)..V(22)
     col_map = {campo: idx for idx, campo in enumerate(campos_siono, start=7)}
     for campo, col in list(col_map.items()):
-        if col >= 18:
+        if col >= 19:
             col_map[campo] = col + 1
 
     data_first_row = 4
@@ -2460,17 +2501,17 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
                 c.fill = _color(C_NA)
                 c.font = _font(color=C_NA_TXT)
 
-        # Monto pagado (col R = 18)
+        # Monto pagado (col S = 19)
         if row.dossier_monto_pagado is not None:
-            cell(18).value = row.dossier_monto_pagado
-            cell(18).number_format = '#,##0.00'
-            cell(18).alignment = _align("right")
+            cell(19).value = row.dossier_monto_pagado
+            cell(19).number_format = '#,##0.00'
+            cell(19).alignment = _align("right")
 
-        cell(23).value = row.observaciones or ''
-        cell(23).alignment = _align("left")
+        cell(24).value = row.observaciones or ''
+        cell(24).alignment = _align("left")
 
         # Borde y fondo alternado
-        for col_num in range(1, 24):
+        for col_num in range(1, 25):
             c = cell(col_num)
             c.border = brd
             try:
@@ -2489,7 +2530,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     # ── ANCHOS DE COLUMNA ────────────────────────────────────────────
     col_widths = {1:4, 2:22, 3:7, 4:8.43, 5:11, 6:11,
                   7:7,8:7,9:7,10:7,11:7,12:7,13:7,14:7,15:7,
-                  16:7,17:7,18:13,19:7,20:7,21:7,22:7,23:22}
+                  16:7,17:7,18:7,19:13,20:7,21:7,22:7,23:7,24:22}
     for col_num, width in col_widths.items():
         ws.column_dimensions[get_column_letter(col_num)].width = width
 
@@ -2503,12 +2544,12 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.cell(total_row, 3).number_format = "0%"
     ws.cell(total_row, 4).value = f"=AVERAGE(D{data_first_row}:D{last_data_row})"
     ws.cell(total_row, 4).number_format = "0.00%"
-    # Total monto pagado (col R=18)
-    ws.cell(total_row, 18).value = f"=SUM(R{data_first_row}:R{last_data_row})"
-    ws.cell(total_row, 18).number_format = '#,##0.00'
-    ws.cell(total_row, 18).alignment = _align("right")
-    ws.cell(total_row, 18).font = _font(bold=True, color="145f2e", size=10)
-    for col_num in range(1, 24):
+    # Total monto pagado (col S=19)
+    ws.cell(total_row, 19).value = f"=SUM(S{data_first_row}:S{last_data_row})"
+    ws.cell(total_row, 19).number_format = '#,##0.00'
+    ws.cell(total_row, 19).alignment = _align("right")
+    ws.cell(total_row, 19).font = _font(bold=True, color="145f2e", size=10)
+    for col_num in range(1, 25):
         c = ws.cell(total_row, col_num)
         c.border = brd
         c.fill = _color("E2E8F0")
@@ -2535,21 +2576,22 @@ DEFAULT_COLS_CONFIG = [
     {"campo":"mod_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. MODIFICACIÓN DE PARTIDAS","badge":"2","css_grupo":"seg-th-mod","visible":False,"ancho":54,"tipo":"siono","orden":5},
     {"campo":"amp_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":6},
     {"campo":"amp_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":7},
-    {"campo":"amp_adenda_firmada","label":"ADENDA\nFIRMADA","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":8},
-    {"campo":"amp_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":False,"ancho":54,"tipo":"siono","orden":9},
-    {"campo":"dossier_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":10},
-    {"campo":"dossier_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":11},
-    {"campo":"dossier_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":12},
-    {"campo":"dossier_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":13},
-    {"campo":"dossier_monto_pagado","label":"MONTO\nPAGADO (S/)","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":74,"tipo":"monto","orden":14},
-    {"campo":"liq_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":15},
-    {"campo":"liq_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":16},
-    {"campo":"liq_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":17},
-    {"campo":"extra_1","label":"EXTRA 1","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":18,"es_extra":True},
-    {"campo":"extra_2","label":"EXTRA 2","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":19,"es_extra":True},
-    {"campo":"extra_3","label":"EXTRA 3","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":20,"es_extra":True},
-    {"campo":"extra_4","label":"EXTRA 4","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":21,"es_extra":True},
-    {"campo":"extra_5","label":"EXTRA 5","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":22,"es_extra":True},
+    {"campo":"amp_opinion_legal","label":"A/P CON\nOPINIÓN LEGAL","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":8},
+    {"campo":"amp_adenda_firmada","label":"ADENDA\nFIRMADA","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":9},
+    {"campo":"amp_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":False,"ancho":54,"tipo":"siono","orden":10},
+    {"campo":"dossier_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":11},
+    {"campo":"dossier_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":12},
+    {"campo":"dossier_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":13},
+    {"campo":"dossier_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":14},
+    {"campo":"dossier_monto_pagado","label":"MONTO\nPAGADO (S/)","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":74,"tipo":"monto","orden":15},
+    {"campo":"liq_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":16},
+    {"campo":"liq_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":17},
+    {"campo":"liq_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. LIQUIDACIÓN FINAL","badge":"5","css_grupo":"seg-th-liq","visible":True,"ancho":54,"tipo":"siono","orden":18},
+    {"campo":"extra_1","label":"EXTRA 1","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":19,"es_extra":True},
+    {"campo":"extra_2","label":"EXTRA 2","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":20,"es_extra":True},
+    {"campo":"extra_3","label":"EXTRA 3","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":21,"es_extra":True},
+    {"campo":"extra_4","label":"EXTRA 4","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":22,"es_extra":True},
+    {"campo":"extra_5","label":"EXTRA 5","grupo":"COLUMNAS EXTRA","badge":"","css_grupo":"seg-th-extra","visible":False,"ancho":80,"tipo":"siono","orden":23,"es_extra":True},
 ]
 
 

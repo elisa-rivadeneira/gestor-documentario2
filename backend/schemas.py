@@ -405,6 +405,7 @@ class SeguimientoComisariaResponse(BaseModel):
     mod_remitido_ugpe: Optional[str] = None
     amp_presentado_ne: Optional[str] = None
     amp_revisado_aprobado: Optional[str] = None
+    amp_opinion_legal: Optional[str] = None
     amp_adenda_firmada: Optional[str] = None
     amp_remitido_ugpe: Optional[str] = None
     amp_merge: Optional[bool] = False
