@@ -254,6 +254,7 @@ class SeguimientoComisaria(Base):
     acta_fecha_firma = Column(DateTime, nullable=True)
     acta_revisada = Column(String(5), nullable=True)          # SI/NO/NA/-
     acta_remitida_ugpe = Column(String(5), nullable=True)
+    acta_presentado_ne = Column(String(5), nullable=True)
 
     # 2. Informe de Modificación de Partidas
     mod_presentado_ne = Column(String(5), nullable=True)

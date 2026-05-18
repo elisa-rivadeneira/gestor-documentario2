@@ -3618,14 +3618,15 @@ async function exportarCartaDocx() {
 // ============================================
 
 const CAMPOS_SIONO = new Set([
-    'acta_revisada','acta_remitida_ugpe',
+    'acta_presentado_ne','acta_revisada','acta_remitida_ugpe',
     'mod_presentado_ne','mod_revisado_aprobado',
     'amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada',
     'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
-    'liq_presentado_ne','liq_revisado_aprobado','liq_remitido_pago',
+    'liq_presentado_ne','liq_revisado_aprobado',
 ]);
 
 const LABELS_CAMPO = {
+    acta_presentado_ne: 'Acta: Presentado al NE',
     acta_revisada: 'Acta: Revisada y aprobada',
     acta_remitida_ugpe: 'Acta: Remitida a UGPE',
     mod_presentado_ne: 'Mod. Partidas: Presentado al NE',
@@ -3640,7 +3641,6 @@ const LABELS_CAMPO = {
     dossier_remitido_pago: 'Dossier: Remitido para pago',
     liq_presentado_ne: 'Liquidación: Presentado al NE',
     liq_revisado_aprobado: 'Liquidación: Revisado y aprobado',
-    liq_remitido_pago: 'Liquidación: Remitido para pago',
     observaciones: 'Observaciones',
     fecha_fin_contractual: 'Fecha Final de Ejecución Contractual',
     acta_fecha_firma: 'Fecha Firma Acta',

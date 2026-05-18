@@ -398,6 +398,7 @@ class SeguimientoComisariaResponse(BaseModel):
     avance_fisico: Optional[float] = None
     fecha_fin_contractual: Optional[datetime] = None
     acta_fecha_firma: Optional[datetime] = None
+    acta_presentado_ne: Optional[str] = None
     acta_revisada: Optional[str] = None
     acta_remitida_ugpe: Optional[str] = None
     mod_presentado_ne: Optional[str] = None
