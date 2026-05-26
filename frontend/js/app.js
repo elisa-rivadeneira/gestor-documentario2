@@ -4019,6 +4019,20 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
     document.getElementById('modal-celda-enlace').value = '';
     document.getElementById('modal-celda-archivo').value = '';
     document.getElementById('modal-celda-detalle-extra').classList.add('hidden');
+    actualizarBtnEnlace('');
+
+    // Si ya es SI, mostrar sección de detalle y cargar el último enlace/obs guardado
+    if (valorActual === 'SI' && tipoCampo(campo) === 'siono') {
+        const rowData = seguimientoData.find(r => r.id === comisariaId);
+        const detalles = rowData ? (rowData.detalles || []).filter(d => d.campo === campo) : [];
+        const ultimo = detalles.length ? detalles[detalles.length - 1] : null;
+        if (ultimo) {
+            document.getElementById('modal-celda-obs').value = ultimo.observacion || '';
+            document.getElementById('modal-celda-enlace').value = ultimo.enlace || '';
+            actualizarBtnEnlace(ultimo.enlace || '');
+        }
+        document.getElementById('modal-celda-detalle-extra').classList.remove('hidden');
+    }
 
     const sinoSection = document.getElementById('modal-siono-section');
     const inputSection = document.getElementById('modal-input-section');
@@ -4080,6 +4094,21 @@ function abrirModalCelda(comisariaId, campo, valorActual, nombreComisaria) {
 
     document.getElementById('modal-celda-detalle').classList.remove('hidden');
 }
+
+function actualizarBtnEnlace(url) {
+    const btn = document.getElementById('btn-abrir-enlace');
+    if (!btn) return;
+    const valido = url && url.trim().startsWith('http');
+    btn.href = valido ? url.trim() : '#';
+    btn.classList.toggle('hidden', !valido);
+    btn.classList.toggle('flex', valido);
+}
+
+// Actualizar el botón en tiempo real mientras se escribe
+document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('modal-celda-enlace');
+    if (inp) inp.addEventListener('input', () => actualizarBtnEnlace(inp.value));
+});
 
 function cerrarModalCelda() {
     document.getElementById('modal-celda-detalle').classList.add('hidden');
