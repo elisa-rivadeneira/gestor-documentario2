@@ -3619,7 +3619,7 @@ async function exportarCartaDocx() {
 
 const CAMPOS_SIONO = new Set([
     'acta_presentado_ne','acta_revisada','acta_remitida_ugpe',
-    'mod_presentado_ne','mod_revisado_aprobado',
+    'mod_presentado_ne','mod_revisado_aprobado','mod_adenda_firmada',
     'amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada',
     'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
     'liq_presentado_ne','liq_revisado_aprobado',
@@ -3631,6 +3631,7 @@ const LABELS_CAMPO = {
     acta_remitida_ugpe: 'Acta: Remitida a UGPE',
     mod_presentado_ne: 'Mod. Partidas: Presentado al NE',
     mod_revisado_aprobado: 'Mod. Partidas: Revisado y aprobado',
+    mod_adenda_firmada: 'Mod. Partidas: Adenda firmada',
     amp_presentado_ne: 'Amp. Plazo: Presentado al NE',
     amp_revisado_aprobado: 'Amp. Plazo: Revisado y aprobado',
     amp_opinion_legal: 'Amp. Plazo: A/P con opinión legal',
@@ -3880,11 +3881,26 @@ function renderizarSeguimiento() {
             if (last.observacion) title += `: ${last.observacion}`;
         }
         const icono = ICONOS[val] ?? val;
+
+        let linkIcon = '';
+        if (val === 'SI' && detalles.length) {
+            const last = detalles[detalles.length - 1];
+            const enlace = last.enlace && last.enlace.trim().startsWith('http') ? last.enlace.trim() : '';
+            if (enlace) {
+                const svgIcon = `<svg viewBox="0 0 16 16" width="9" height="9" fill="#3b82f6"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243z"/></svg>`;
+                if (editable) {
+                    linkIcon = `<span title="Tiene enlace guardado" style="pointer-events:none;vertical-align:middle;display:inline-block;margin-left:2px;">${svgIcon}</span>`;
+                } else {
+                    linkIcon = `<a href="${enlace}" target="_blank" title="Abrir enlace" style="vertical-align:middle;display:inline-block;margin-left:2px;">${svgIcon}</a>`;
+                }
+            }
+        }
+
         const base = 'border border-gray-200 px-1 py-1.5';
         if (editable) {
-            return `<td${rowspanAttr} class="${cls} ${base}" onclick="abrirModalCelda(${row.id},'${campo}','${val}','${row.comisaria.replace(/'/g,'\\\'')}')" title="${title}">${icono}${mergeIndicator}</td>`;
+            return `<td${rowspanAttr} class="${cls} ${base}" onclick="abrirModalCelda(${row.id},'${campo}','${val}','${row.comisaria.replace(/'/g,'\\\'')}')" title="${title}">${icono}${linkIcon}${mergeIndicator}</td>`;
         }
-        return `<td${rowspanAttr} class="${cls} ${base} celda-readonly" title="${title}">${icono}${mergeIndicator}</td>`;
+        return `<td${rowspanAttr} class="${cls} ${base} celda-readonly" title="${title}">${icono}${linkIcon}${mergeIndicator}</td>`;
     }
 
     const rowData = seguimientoData.map((row, idx) => {

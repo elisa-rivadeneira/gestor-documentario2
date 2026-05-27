@@ -259,6 +259,7 @@ class SeguimientoComisaria(Base):
     # 2. Informe de Modificación de Partidas
     mod_presentado_ne = Column(String(5), nullable=True)
     mod_revisado_aprobado = Column(String(5), nullable=True)
+    mod_adenda_firmada = Column(String(5), nullable=True)
     mod_remitido_ugpe = Column(String(5), nullable=True)
 
     # 3. Informe de Ampliación de Plazo

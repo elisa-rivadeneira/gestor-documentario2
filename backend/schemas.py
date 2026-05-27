@@ -403,6 +403,7 @@ class SeguimientoComisariaResponse(BaseModel):
     acta_remitida_ugpe: Optional[str] = None
     mod_presentado_ne: Optional[str] = None
     mod_revisado_aprobado: Optional[str] = None
+    mod_adenda_firmada: Optional[str] = None
     mod_remitido_ugpe: Optional[str] = None
     amp_presentado_ne: Optional[str] = None
     amp_revisado_aprobado: Optional[str] = None
