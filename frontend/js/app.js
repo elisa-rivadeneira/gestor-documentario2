@@ -3621,7 +3621,7 @@ const CAMPOS_SIONO = new Set([
     'acta_presentado_ne','acta_revisada','acta_remitida_ugpe',
     'mod_presentado_ne','mod_revisado_aprobado','mod_adenda_firmada',
     'amp_presentado_ne','amp_revisado_aprobado','amp_opinion_legal','amp_adenda_firmada',
-    'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago',
+    'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago','dossier_validacion_tecnica_ugpe',
     'liq_presentado_ne','liq_revisado_aprobado',
 ]);
 
@@ -3640,6 +3640,7 @@ const LABELS_CAMPO = {
     dossier_revisado_aprobado: 'Dossier: Revisado y aprobado',
     dossier_remitido_ugpe: 'Dossier: Remitido a UGPE',
     dossier_remitido_pago: 'Dossier: Remitido para pago',
+    dossier_validacion_tecnica_ugpe: 'Dossier: Validación técnica UGPE',
     liq_presentado_ne: 'Liquidación: Presentado al NE',
     liq_revisado_aprobado: 'Liquidación: Revisado y aprobado',
     observaciones: 'Observaciones',

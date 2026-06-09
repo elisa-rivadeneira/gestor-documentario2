@@ -275,6 +275,7 @@ class SeguimientoComisaria(Base):
     dossier_revisado_aprobado = Column(String(5), nullable=True)
     dossier_remitido_ugpe = Column(String(5), nullable=True)
     dossier_remitido_pago = Column(String(5), nullable=True)
+    dossier_validacion_tecnica_ugpe = Column(String(5), nullable=True)
     dossier_monto_pagado = Column(Float, nullable=True)
     dossier_monto_merge = Column(Boolean, default=False, nullable=False, server_default='0')
 
