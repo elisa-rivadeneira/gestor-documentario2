@@ -197,6 +197,7 @@ def migrar_seguimiento():
                 ('acta_presentado_ne',    'TEXT'),
                 ('mod_adenda_firmada',    'TEXT'),
                 ('dossier_validacion_tecnica_ugpe', 'TEXT'),
+                ('dossier_fecha_presentacion', 'TEXT'),
                 ('orden_fila',            'INTEGER'),
                 ('extra_1',             'TEXT'),
                 ('extra_2',             'TEXT'),
@@ -266,6 +267,19 @@ def migrar_columnas_config_db():
                 cols.append(new_col)
             changed = True
             print("Migración: acta_presentado_ne insertado en seguimiento_columnas_config")
+
+        # dossier_fecha_presentacion justo después de dossier_presentado_ne
+        campos = [c['campo'] for c in cols]
+        if 'dossier_fecha_presentacion' not in campos:
+            new_col = {"campo":"dossier_fecha_presentacion","label":"FECHA PRESENTAC.\nDOSSIER","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":72,"tipo":"fecha"}
+            for i, col in enumerate(cols):
+                if col['campo'] == 'dossier_revisado_aprobado':
+                    cols.insert(i, new_col)
+                    break
+            else:
+                cols.append(new_col)
+            changed = True
+            print("Migración: dossier_fecha_presentacion insertado en seguimiento_columnas_config")
 
         # dossier_validacion_tecnica_ugpe justo antes de dossier_monto_pagado
         campos = [c['campo'] for c in cols]
@@ -2417,7 +2431,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     brd = _border()
 
     # ── FILA 1: Título ──────────────────────────────────────────────
-    ws.merge_cells("A1:Y1")
+    ws.merge_cells("A1:Z1")
     c = ws["A1"]
     c.value = "SEGUIMIENTO AL PROCESO DE LIQUIDACIÓN - MANTENIMIENTO Y ACONDICIONAMIENTO DE COMISARÍAS"
     c.fill = _color(C_TITLE)
@@ -2435,9 +2449,9 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("F2","I2","1. ACTA DE CONFORMIDAD\nDE EJECUCIÓN Y RECEPCIÓN FÍSICA", C_GRP),
         ("J2","L2","2. INFORME DE MODIFICACIÓN\nDE PARTIDAS (UGPE)", C_GRP),
         ("M2","P2","3. INFORME DE\nAMPLIACIÓN DE PLAZO", C_GRP),
-        ("Q2","V2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
-        ("W2","X2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
-        ("Y2","Y3","OBSERVACIONES", C_TITLE),
+        ("Q2","W2","4. INFORME DE CULMINACIÓN Y\nENTREGA DE OBRA (DOSSIER)", C_GRP),
+        ("X2","Y2","5. INFORME DE LIQUIDACIÓN\n(FINAL)", C_GRP),
+        ("Z2","Z3","OBSERVACIONES", C_TITLE),
     ]
     for start, end, label, color in grupos:
         if start != end:
@@ -2454,7 +2468,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.merge_cells("A2:A3")
     ws.merge_cells("B2:B3")
     ws.merge_cells("E2:E3")
-    ws.merge_cells("Y2:Y3")
+    ws.merge_cells("Z2:Z3")
 
     sub_hdrs = [
         ("C3", "PROGRAMADO"),
@@ -2471,13 +2485,14 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         ("O3", "A/P CON\nOPINIÓN LEGAL"),
         ("P3", "ADENDA\nFIRMADA"),
         ("Q3", "PRESENTADO\nAL NE"),
-        ("R3", "REVISADO Y\nAPROBADO"),
-        ("S3", "REMITIDO\nA UGPE"),
-        ("T3", "REMITIDO\nPARA PAGO"),
-        ("U3", "VALIDACIÓN\nTÉCNICA UGPE"),
-        ("V3", "MONTO\nPAGADO (S/)"),
-        ("W3", "PRESENTADO\nAL NE"),
-        ("X3", "REVISADO Y\nAPROBADO"),
+        ("R3", "FECHA PRESENTAC.\nDOSSIER"),
+        ("S3", "REVISADO Y\nAPROBADO"),
+        ("T3", "REMITIDO\nA UGPE"),
+        ("U3", "REMITIDO\nPARA PAGO"),
+        ("V3", "VALIDACIÓN\nTÉCNICA UGPE"),
+        ("W3", "MONTO\nPAGADO (S/)"),
+        ("X3", "PRESENTADO\nAL NE"),
+        ("Y3", "REVISADO Y\nAPROBADO"),
     ]
     for cell_ref, label in sub_hdrs:
         c = ws[cell_ref]
@@ -2496,11 +2511,15 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         'dossier_presentado_ne','dossier_revisado_aprobado','dossier_remitido_ugpe','dossier_remitido_pago','dossier_validacion_tecnica_ugpe',
         'liq_presentado_ne','liq_revisado_aprobado',
     ]
-    # G(7)..U(21) + saltar V(22)=monto → W(23)..X(24)
+    # G(7)..Q(17) + saltar R(18)=fecha_presentacion → S(19)..V(22) + saltar W(23)=monto → X(24)..Y(25)
     col_map = {campo: idx for idx, campo in enumerate(campos_siono, start=7)}
     for campo, col in list(col_map.items()):
-        if col >= 22:
-            col_map[campo] = col + 1
+        new_col = col
+        if new_col >= 18:
+            new_col += 1   # saltar dossier_fecha_presentacion en col 18
+        if new_col >= 23:
+            new_col += 1   # saltar dossier_monto_pagado en col 23
+        col_map[campo] = new_col
 
     data_first_row = 4
     for r_idx, row in enumerate(filas, start=data_first_row):
@@ -2524,6 +2543,9 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
         if row.acta_fecha_firma:
             cell(6).value = row.acta_fecha_firma
             cell(6).number_format = "DD/MM/YYYY"
+        if row.dossier_fecha_presentacion:
+            cell(18).value = row.dossier_fecha_presentacion
+            cell(18).number_format = "DD/MM/YYYY"
 
         # SI → ✔ (verde), NO → ✘ (rojo), NA/- → gris
         for campo, col_num in col_map.items():
@@ -2543,17 +2565,17 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
                 c.fill = _color(C_NA)
                 c.font = _font(color=C_NA_TXT)
 
-        # Monto pagado (col V = 22)
+        # Monto pagado (col W = 23)
         if row.dossier_monto_pagado is not None:
-            cell(22).value = row.dossier_monto_pagado
-            cell(22).number_format = '#,##0.00'
-            cell(22).alignment = _align("right")
+            cell(23).value = row.dossier_monto_pagado
+            cell(23).number_format = '#,##0.00'
+            cell(23).alignment = _align("right")
 
-        cell(25).value = row.observaciones or ''
-        cell(25).alignment = _align("left")
+        cell(26).value = row.observaciones or ''
+        cell(26).alignment = _align("left")
 
         # Borde y fondo alternado
-        for col_num in range(1, 26):
+        for col_num in range(1, 27):
             c = cell(col_num)
             c.border = brd
             try:
@@ -2572,7 +2594,7 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     # ── ANCHOS DE COLUMNA ────────────────────────────────────────────
     col_widths = {1:4, 2:22, 3:7, 4:8.43, 5:11, 6:11,
                   7:7,8:7,9:7,10:7,11:7,12:7,13:7,14:7,15:7,16:7,
-                  17:7,18:7,19:7,20:7,21:7,22:13,23:7,24:7,25:22}
+                  17:7,18:11,19:7,20:7,21:7,22:7,23:13,24:7,25:7,26:22}
     for col_num, width in col_widths.items():
         ws.column_dimensions[get_column_letter(col_num)].width = width
 
@@ -2586,12 +2608,12 @@ def exportar_seguimiento_excel(db: Session = Depends(get_db)):
     ws.cell(total_row, 3).number_format = "0%"
     ws.cell(total_row, 4).value = f"=AVERAGE(D{data_first_row}:D{last_data_row})"
     ws.cell(total_row, 4).number_format = "0.00%"
-    # Total monto pagado (col V=22)
-    ws.cell(total_row, 22).value = f"=SUM(V{data_first_row}:V{last_data_row})"
-    ws.cell(total_row, 22).number_format = '#,##0.00'
-    ws.cell(total_row, 22).alignment = _align("right")
-    ws.cell(total_row, 22).font = _font(bold=True, color="145f2e", size=10)
-    for col_num in range(1, 26):
+    # Total monto pagado (col W=23)
+    ws.cell(total_row, 23).value = f"=SUM(W{data_first_row}:W{last_data_row})"
+    ws.cell(total_row, 23).number_format = '#,##0.00'
+    ws.cell(total_row, 23).alignment = _align("right")
+    ws.cell(total_row, 23).font = _font(bold=True, color="145f2e", size=10)
+    for col_num in range(1, 27):
         c = ws.cell(total_row, col_num)
         c.border = brd
         c.fill = _color("E2E8F0")
@@ -2624,7 +2646,8 @@ DEFAULT_COLS_CONFIG = [
     {"campo":"amp_adenda_firmada","label":"ADENDA\nFIRMADA","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":True,"ancho":54,"tipo":"siono","orden":10},
     {"campo":"amp_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. AMPLIACIÓN DE PLAZO","badge":"3","css_grupo":"seg-th-amp","visible":False,"ancho":54,"tipo":"siono","orden":11},
     {"campo":"dossier_presentado_ne","label":"PRESENTADO\nAL NE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":12},
-    {"campo":"dossier_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":13},
+    {"campo":"dossier_fecha_presentacion","label":"FECHA PRESENTAC.\nDOSSIER","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":72,"tipo":"fecha","orden":13},
+    {"campo":"dossier_revisado_aprobado","label":"REVISADO Y\nAPROBADO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":14},
     {"campo":"dossier_remitido_ugpe","label":"REMITIDO\nA UGPE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":14},
     {"campo":"dossier_remitido_pago","label":"REMITIDO\nPARA PAGO","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":15},
     {"campo":"dossier_validacion_tecnica_ugpe","label":"VALIDACIÓN\nTÉCNICA UGPE","grupo":"INF. CULMINACIÓN Y ENTREGA","badge":"4","css_grupo":"seg-th-dossier","visible":True,"ancho":54,"tipo":"siono","orden":16},
@@ -2701,7 +2724,7 @@ def actualizar_celda(
     valor_anterior = getattr(comisaria, campo)
 
     # Convertir el valor según el tipo del campo
-    CAMPOS_FECHA = {'fecha_fin_contractual', 'acta_fecha_firma'}
+    CAMPOS_FECHA = {'fecha_fin_contractual', 'acta_fecha_firma', 'dossier_fecha_presentacion'}
     CAMPOS_FLOAT = {'avance_fisico', 'avance_programado', 'dossier_monto_pagado'}
     CAMPOS_BOOL = {'dossier_monto_merge', 'amp_merge'}
     valor_convertido = request.valor

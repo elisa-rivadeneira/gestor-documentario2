@@ -272,6 +272,7 @@ class SeguimientoComisaria(Base):
 
     # 4. Informe de Culminación y Entrega de Obra (DOSSIER)
     dossier_presentado_ne = Column(String(5), nullable=True)
+    dossier_fecha_presentacion = Column(DateTime, nullable=True)
     dossier_revisado_aprobado = Column(String(5), nullable=True)
     dossier_remitido_ugpe = Column(String(5), nullable=True)
     dossier_remitido_pago = Column(String(5), nullable=True)

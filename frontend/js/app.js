@@ -3637,6 +3637,7 @@ const LABELS_CAMPO = {
     amp_opinion_legal: 'Amp. Plazo: A/P con opinión legal',
     amp_adenda_firmada: 'Amp. Plazo: Adenda firmada',
     dossier_presentado_ne: 'Dossier: Presentado al NE',
+    dossier_fecha_presentacion: 'Dossier: Fecha presentación',
     dossier_revisado_aprobado: 'Dossier: Revisado y aprobado',
     dossier_remitido_ugpe: 'Dossier: Remitido a UGPE',
     dossier_remitido_pago: 'Dossier: Remitido para pago',

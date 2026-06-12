@@ -412,6 +412,7 @@ class SeguimientoComisariaResponse(BaseModel):
     amp_remitido_ugpe: Optional[str] = None
     amp_merge: Optional[bool] = False
     dossier_presentado_ne: Optional[str] = None
+    dossier_fecha_presentacion: Optional[datetime] = None
     dossier_revisado_aprobado: Optional[str] = None
     dossier_remitido_ugpe: Optional[str] = None
     dossier_remitido_pago: Optional[str] = None
